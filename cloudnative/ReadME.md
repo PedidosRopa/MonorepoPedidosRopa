@@ -1,4 +1,4 @@
-# Pedidos360 - Backend Cloud Native
+# PedidosRopa - Backend Cloud Native
 
 Sistema backend RESTful desarrollado en Java con Spring Boot para la gestión de productos y pedidos en la arquitectura de la aplicación **App de pedidos** (Asignatura: Desarrollo Cloud Native I - DSY1107).
 
