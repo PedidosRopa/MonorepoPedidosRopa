@@ -6,7 +6,7 @@ Sistema backend RESTful desarrollado en Java con Spring Boot para la gestión de
 
 ## Arquitectura del Sistema
 
-* **Frontend:** Angular con integración MSAL para login federado contra Azure AD.
+* **Frontend:** Angular con integración MSAL para login federado utilizando Azure AD y tenant.
 * **API Gateway:** AWS API Gateway como puerta de entrada unificada y enrutador público.
 * **Backend:** Microservicio en Spring Boot desplegado en instancias AWS EC2, actuando como BFF y servidor de recursos.
 * **Identidad (IDaaS):** Azure AD emite y valida tokens JWT (comprobación de firma, expiración e issuer).
@@ -51,7 +51,7 @@ Sistema backend RESTful desarrollado en Java con Spring Boot para la gestión de
 
 ---
 
-## 🔒 Seguridad y Flujo de Autorización
+##  Seguridad y Flujo de Autorización
 
 1. El cliente envía el token JWT recibido de Azure AD en la cabecera `Authorization: Bearer <token>`.
 2. `SecurityConfig` intercepta la petición a través de OAuth2 Resource Server.
@@ -60,7 +60,7 @@ Sistema backend RESTful desarrollado en Java con Spring Boot para la gestión de
 
 ---
 
-## 🚀 Endpoints de la API
+##  Endpoints de la API
 
 ### Módulo de Productos (`/api/productos`)
 
