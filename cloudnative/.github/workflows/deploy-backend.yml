@@ -1,0 +1,43 @@
+name: Deploy Backend to AWS EC2
+
+on:
+  push:
+    branches: [ "deploy" ]
+    paths:
+      - 'backend/**'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Conectar a EC2 y desplegar Backend
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            if [ ! -d "app" ]; then
+              git clone https://github.com/TU_USUARIO/TU_REPOSITO.git app
+            fi
+            cd app
+            git pull origin deploy
+            
+            # Navegar a la carpeta del backend
+            cd backend
+
+            # Reconstruir únicamente el contenedor del backend
+            docker stop backend-container || true
+            docker rm backend-container || true
+
+            docker build -t backend-image .
+
+            docker run -d \
+              --name backend-container \
+              -p 8080:8080 \
+              -e AZURE_TENANT_ID="${{ secrets.AZURE_TENANT_ID }}" \
+              -e AZURE_CLIENT_ID="${{ secrets.AZURE_CLIENT_ID }}" \
+              -e DB_URL="${{ secrets.DB_URL }}" \
+              -e DB_USERNAME="${{ secrets.DB_USERNAME }}" \
+              -e DB_PASSWORD="${{ secrets.DB_PASSWORD }}" \
+              backend-image
