@@ -61,7 +61,7 @@ public class SecurityConfig {
     public OpenAPI customOpenAPI() {
         return new OpenAPI()
                 .info(new Info()
-                        .title("Pedidos360 API Documentation")
+                        .title("PedidosRopa API Documentation")
                         .version("1.0")
                         .description("Documentación interactiva del Backend Cloud Native"))
                 .addSecurityItem(new SecurityRequirement().addList("BearerAuth"))
