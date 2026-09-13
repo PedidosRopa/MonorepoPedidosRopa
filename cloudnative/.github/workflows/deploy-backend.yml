@@ -4,7 +4,7 @@ on:
   push:
     branches: [ "deploy" ]
     paths:
-      - 'backend/**'
+      - 'cloudnative/backend/**' # O 'cloudnative/**' si todo el backend está directo en cloudnative
 
 jobs:
   deploy:
@@ -19,10 +19,8 @@ jobs:
           script: |
             set -e
 
-            # 1. Obtener URL del repositorio dinámicamente
             REPO_URL="https://github.com/${{ github.repository }}.git"
 
-            # 2. Clonar o forzar la actualización en la rama deploy
             if [ ! -d "app" ]; then
               git clone $REPO_URL app
               cd app
@@ -34,17 +32,14 @@ jobs:
               git reset --hard origin/deploy
             fi
 
-            # 3. Mover a la carpeta del backend
-            cd backend
+            # Navegación corregida pasando por la carpeta cloudnative
+            cd cloudnative/backend # Cambia a "cd cloudnative" si el Dockerfile está directo dentro de cloudnative
 
-            # 4. Detener y remover el contenedor previo
             docker stop backend-container 2>/dev/null || true
             docker rm backend-container 2>/dev/null || true
 
-            # 5. Construir la imagen Docker en la carpeta backend/
             docker build -t backend-image .
 
-            # 6. Levantar el contenedor actualizado
             docker run -d \
               --name backend-container \
               --restart unless-stopped \
@@ -56,5 +51,4 @@ jobs:
               -e DB_PASSWORD="${{ secrets.DB_PASSWORD }}" \
               backend-image
 
-            # 7. Limpiar imágenes no utilizadas para ahorrar espacio en EC2
             docker image prune -f
