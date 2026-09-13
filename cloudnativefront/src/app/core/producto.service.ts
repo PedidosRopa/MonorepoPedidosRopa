@@ -4,13 +4,7 @@ import { Observable } from 'rxjs';
 import { Producto } from './models';
 import { environment } from '../../environments/environment';
 
-/**
- * Consume ProductoController:
- *  GET    /api/productos      (público según SecurityConfig)
- *  GET    /api/productos/{id} (público)
- *  POST   /api/productos      (requiere Bearer JWT -> lo pone MsalInterceptor)
- *  DELETE /api/productos/{id} (requiere Bearer JWT)
- */
+
 @Injectable({ providedIn: 'root' })
 export class ProductoService {
   private readonly http = inject(HttpClient);

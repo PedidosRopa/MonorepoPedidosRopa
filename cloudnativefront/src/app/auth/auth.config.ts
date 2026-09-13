@@ -11,19 +11,11 @@ import {
 } from '@azure/msal-angular';
 import { environment } from '../../environments/environment';
 
-/**
- * Request que se usa para login (popup o redirect).
- * Incluye los scopes de la API del backend para que el accessToken
- * sirva como Bearer JWT contra Spring Boot (oauth2ResourceServer).
- */
 export const loginRequest = {
   scopes: [...environment.azure.loginScopes],
 };
 
-/**
- * Instancia MSAL. Authority construida con el tenant placeholder.
- * Reemplazar YOUR_AZURE_TENANT_ID / YOUR_AZURE_FRONTEND_CLIENT_ID en environments.
- */
+
 export function msalInstanceFactory(): IPublicClientApplication {
   return new PublicClientApplication({
     auth: {
@@ -50,9 +42,7 @@ export function msalInstanceFactory(): IPublicClientApplication {
   });
 }
 
-/**
- * Config del MsalGuard: protege rutas con login Redirect.
- */
+
 export function msalGuardConfigFactory(): MsalGuardConfiguration {
   return {
     interactionType: InteractionType.Redirect,
@@ -60,13 +50,6 @@ export function msalGuardConfigFactory(): MsalGuardConfiguration {
   };
 }
 
-/**
- * Config del MsalInterceptor: inyecta automáticamente
- * `Authorization: Bearer <JWT>` en las llamadas al backend.
- *
- * protectedResourceMap: endpoint -> scopes.
- * El interceptor adquiere el token silenciosamente y lo adjunta.
- */
 export function msalInterceptorConfigFactory(): MsalInterceptorConfiguration {
   const protectedResourceMap = new Map<string, Array<string> | null>();
   // Todas las llamadas a la API del backend llevan el access token del scope de la API.

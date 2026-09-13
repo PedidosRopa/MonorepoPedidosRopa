@@ -4,15 +4,8 @@ import { Observable } from 'rxjs';
 import { Pedido } from './models';
 import { environment } from '../../environments/environment';
 
-/**
- * Consume PedidoController (todo requiere Bearer JWT):
- *  GET    /api/pedidos            -> todos los pedidos
- *  GET    /api/pedidos/mis-pedidos -> pedidos del usuario del token
- *  POST   /api/pedidos            -> crea pedido (el backend setea usuarioEmail y fecha)
- *  DELETE /api/pedidos/{id}
- *
- * El token se inyecta solo vía MsalInterceptor (protectedResourceMap).
- */
+// El token se inyecta solo vía MsalInterceptor (protectedResourceMap).
+ 
 @Injectable({ providedIn: 'root' })
 export class PedidoService {
   private readonly http = inject(HttpClient);
