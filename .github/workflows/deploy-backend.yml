@@ -4,7 +4,7 @@ on:
   push:
     branches: [ "deploy" ]
     paths:
-      - 'cloudnative/backend/**' # O 'cloudnative/**' si todo el backend está directo en cloudnative
+      - 'cloudnative/**'
 
 jobs:
   deploy:
@@ -32,14 +32,16 @@ jobs:
               git reset --hard origin/deploy
             fi
 
-            # Navegación corregida pasando por la carpeta cloudnative
-            cd cloudnative/backend # Cambia a "cd cloudnative" si el Dockerfile está directo dentro de cloudnative
+            # Navegar a la carpeta cloudnative (donde está tu pom.xml y Dockerfile)
+            cd cloudnative
 
             docker stop backend-container 2>/dev/null || true
             docker rm backend-container 2>/dev/null || true
 
-            docker build -t backend-image .
+            # Construir la imagen Docker usando el Dockerfile
+            docker build -t backend-image -f Dockerfile .
 
+            # Levantar el contenedor
             docker run -d \
               --name backend-container \
               --restart unless-stopped \
