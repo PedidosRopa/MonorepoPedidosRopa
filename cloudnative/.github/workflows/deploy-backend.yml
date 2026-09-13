@@ -17,23 +17,37 @@ jobs:
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
+            set -e
+
+            # 1. Obtener URL del repositorio dinámicamente
+            REPO_URL="https://github.com/${{ github.repository }}.git"
+
+            # 2. Clonar o forzar la actualización en la rama deploy
             if [ ! -d "app" ]; then
-              git clone https://github.com/TU_USUARIO/TU_REPOSITO.git app
+              git clone $REPO_URL app
+              cd app
+              git checkout deploy
+            else
+              cd app
+              git fetch --all
+              git checkout deploy
+              git reset --hard origin/deploy
             fi
-            cd app
-            git pull origin deploy
-            
-            # Navegar a la carpeta del backend
+
+            # 3. Mover a la carpeta del backend
             cd backend
 
-            # Reconstruir únicamente el contenedor del backend
-            docker stop backend-container || true
-            docker rm backend-container || true
+            # 4. Detener y remover el contenedor previo
+            docker stop backend-container 2>/dev/null || true
+            docker rm backend-container 2>/dev/null || true
 
+            # 5. Construir la imagen Docker en la carpeta backend/
             docker build -t backend-image .
 
+            # 6. Levantar el contenedor actualizado
             docker run -d \
               --name backend-container \
+              --restart unless-stopped \
               -p 8080:8080 \
               -e AZURE_TENANT_ID="${{ secrets.AZURE_TENANT_ID }}" \
               -e AZURE_CLIENT_ID="${{ secrets.AZURE_CLIENT_ID }}" \
@@ -41,3 +55,6 @@ jobs:
               -e DB_USERNAME="${{ secrets.DB_USERNAME }}" \
               -e DB_PASSWORD="${{ secrets.DB_PASSWORD }}" \
               backend-image
+
+            # 7. Limpiar imágenes no utilizadas para ahorrar espacio en EC2
+            docker image prune -f
