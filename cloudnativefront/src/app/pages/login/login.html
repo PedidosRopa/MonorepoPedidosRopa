@@ -1,0 +1,34 @@
+<section class="login">
+  <h1>Iniciar sesión</h1>
+  <p class="muted">
+    El login usa Microsoft Entra ID (Azure) con MSAL.
+    Tras el login, el <code>MsalInterceptor</code> inyecta
+    <code>Authorization: Bearer &lt;JWT&gt;</code> en cada request al backend.
+  </p>
+
+  @if (!auth.isLoggedIn()) {
+    <button class="btn primary" (click)="login()">Iniciar sesión con Microsoft</button>
+    <p class="muted small">
+      Serás redirigido a <code>login.microsoftonline.com</code> con el
+      <code>clientId</code> y <code>tenantId</code> configurados en
+      <code>src/environments/environment*.ts</code>.
+    </p>
+  } @else {
+    <div class="card">
+      <p><strong>Sesión activa:</strong> {{ auth.username() }}</p>
+      <div class="row">
+        <button class="btn secondary" (click)="verToken()" [disabled]="loadingToken()">
+          {{ loadingToken() ? 'Obteniendo token…' : 'Ver token (debug)' }}
+        </button>
+        <button class="btn danger" (click)="logout()">Cerrar sesión</button>
+      </div>
+      @if (tokenPreview()) {
+        <p class="token">{{ tokenPreview() }}</p>
+      }
+      <p>
+        <a routerLink="/productos">Ir a productos</a> ·
+        <a routerLink="/pedidos">Ir a mis pedidos</a>
+      </p>
+    </div>
+  }
+</section>
