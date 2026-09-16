@@ -2,7 +2,7 @@
 export const environment = {
   production: true,
 
-  apiBaseUrl: 'https://0l0fz7jsp3.execute-api.us-east-1.amazonaws.com/',
+  apiBaseUrl: 'https://0l0fz7jsp3.execute-api.us-east-1.amazonaws.com',
 
   azure: {
     clientId: '269c19eb-1cf2-4be3-80f0-b3167584cbc1',
