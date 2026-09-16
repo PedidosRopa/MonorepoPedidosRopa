@@ -13,8 +13,8 @@ export const environment = {
 
     postLogoutRedirectUri: 'http://localhost:4200/login',
 
-    loginScopes: ['openid', 'profile', 'email', 'api://YOUR_BACKEND_CLIENT_ID/access_as_user'],
+    loginScopes: ['openid', 'profile', 'email', 'api://f72177e7-8274-457f-8340-2c60ebb2becf/access_as_user'],
 
-    apiScopes: ['api://YOUR_BACKEND_CLIENT_ID/access_as_user'],
+    apiScopes: ['api://f72177e7-8274-457f-8340-2c60ebb2becf/access_as_user'],
   },
 };
