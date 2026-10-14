@@ -1,8 +1,11 @@
 package com.ev1.cloudnative.services;
 
 import com.ev1.cloudnative.dtos.DetalleItemDto;
+import com.ev1.cloudnative.dtos.PedidoCreadoEvent;
 import com.ev1.cloudnative.dtos.PedidoRequestDto;
 import com.ev1.cloudnative.dtos.PedidoResponseDto;
+import com.ev1.cloudnative.exceptions.ResourceNotFoundException;
+import com.ev1.cloudnative.exceptions.StockInsuficienteException;
 import com.ev1.cloudnative.mappers.PedidoMapper;
 import com.ev1.cloudnative.model.DetallePedido;
 import com.ev1.cloudnative.model.EstadoPedido;
@@ -11,6 +14,8 @@ import com.ev1.cloudnative.model.Producto;
 import com.ev1.cloudnative.repositories.PedidoRepository;
 import com.ev1.cloudnative.repositories.ProductoRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,6 +29,13 @@ public class PedidoService {
     private final PedidoRepository pedidoRepository;
     private final ProductoRepository productoRepository;
     private final PedidoMapper pedidoMapper;
+    private final RabbitTemplate rabbitTemplate;
+
+    @Value("${app.rabbitmq.exchanges.pedidos}")
+    private String exchangeName;
+
+    @Value("${app.rabbitmq.routing-keys.pedido-creado}")
+    private String routingKey;
 
     @Transactional
     public PedidoResponseDto crearPedido(PedidoRequestDto requestDto, String usuarioEmail) {
@@ -33,11 +45,11 @@ public class PedidoService {
         for (DetalleItemDto item : requestDto.items()) {
             // 1. Obtener producto de la base de datos
             Producto producto = productoRepository.findById(item.productoId())
-                    .orElseThrow(() -> new RuntimeException("Producto no encontrado con ID: " + item.productoId()));
+                    .orElseThrow(() -> new ResourceNotFoundException("Producto no encontrado con ID: " + item.productoId()));
 
             // 2. Validar stock disponible
             if (producto.getStock() < item.cantidad()) {
-                throw new IllegalArgumentException(
+                throw new StockInsuficienteException(
                     String.format("Stock insuficiente para '%s'. Disponible: %d, Solicitado: %d", 
                         producto.getNombre(), producto.getStock(), item.cantidad())
                 );
@@ -69,9 +81,30 @@ public class PedidoService {
                 .detalles(detalles)
                 .build();
 
-        // 7. Persistir pedido y sus detalles (CascadeType.ALL)
+        // 7. Persistir pedido y sus detalles
         Pedido pedidoGuardado = pedidoRepository.save(pedido);
 
+        // 8. Construir la lista de resumen para el evento
+        List<PedidoCreadoEvent.ItemResumen> itemsResumen = detalles.stream()
+                .map(d -> new PedidoCreadoEvent.ItemResumen(
+                        d.getProducto().getIdProducto(),
+                        d.getProducto().getNombre(),
+                        d.getCantidad()
+                ))
+                .toList();
+
+        // 9. Crear y publicar el evento hacia RabbitMQ
+        PedidoCreadoEvent evento = new PedidoCreadoEvent(
+                pedidoGuardado.getIdPedido(),
+                usuarioEmail,
+                pedidoGuardado.getMontoTotal(),
+                pedidoGuardado.getFechaPedido(),
+                itemsResumen
+        );
+
+        rabbitTemplate.convertAndSend(exchangeName, routingKey, evento);
+
+        // 10. Retornar DTO de respuesta
         return pedidoMapper.toDto(pedidoGuardado);
     }
 
@@ -94,7 +127,7 @@ public class PedidoService {
     @Transactional
     public void cancelarPedido(Long idPedido) {
         Pedido pedido = pedidoRepository.findById(idPedido)
-                .orElseThrow(() -> new RuntimeException("Pedido no encontrado con ID: " + idPedido));
+                .orElseThrow(() -> new ResourceNotFoundException("Pedido no encontrado con ID: " + idPedido));
 
         if (pedido.getEstado() == EstadoPedido.CANCELADO) {
             throw new IllegalStateException("El pedido ya se encuentra cancelado.");
