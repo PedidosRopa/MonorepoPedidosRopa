@@ -1,10 +1,5 @@
 package com.ev1.cloudnative.config;
 
-import io.swagger.v3.oas.models.Components;
-import io.swagger.v3.oas.models.OpenAPI;
-import io.swagger.v3.oas.models.info.Info;
-import io.swagger.v3.oas.models.security.SecurityRequirement;
-import io.swagger.v3.oas.models.security.SecurityScheme;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -54,24 +49,6 @@ public class SecurityConfig {
             );
 
         return http.build();
-    }
-
-    // Configuración para añadir el botón "Authorize" (Bearer JWT) en Swagger UI
-    @Bean
-    public OpenAPI customOpenAPI() {
-        return new OpenAPI()
-                .info(new Info()
-                        .title("PedidosRopa API Documentation")
-                        .version("1.0")
-                        .description("Documentación interactiva del Backend Cloud Native"))
-                .addSecurityItem(new SecurityRequirement().addList("BearerAuth"))
-                .components(new Components()
-                        .addSecuritySchemes("BearerAuth",
-                                new SecurityScheme()
-                                        .name("BearerAuth")
-                                        .type(SecurityScheme.Type.HTTP)
-                                        .scheme("bearer")
-                                        .bearerFormat("JWT")));
     }
 
     @Bean
