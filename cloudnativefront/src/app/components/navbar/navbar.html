@@ -1,0 +1,18 @@
+<nav class="navbar">
+  <a class="brand" routerLink="/productos">PedidosRopa</a>
+
+  <div class="links">
+    <a routerLink="/productos" routerLinkActive="active">Productos</a>
+    <a routerLink="/pedidos" routerLinkActive="active">Mis pedidos</a>
+    <a routerLink="/login" routerLinkActive="active">Login</a>
+  </div>
+
+  <div class="user">
+    @if (auth.isLoggedIn()) {
+      <span class="email" title="Cuenta activa">{{ auth.username() }}</span>
+      <button class="btn secondary" (click)="logout()">Cerrar sesión</button>
+    } @else {
+      <button class="btn primary" (click)="login()">Iniciar sesión</button>
+    }
+  </div>
+</nav>
