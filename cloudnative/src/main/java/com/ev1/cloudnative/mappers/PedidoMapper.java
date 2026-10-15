@@ -4,39 +4,20 @@ import com.ev1.cloudnative.dtos.DetalleResponseDto;
 import com.ev1.cloudnative.dtos.PedidoResponseDto;
 import com.ev1.cloudnative.model.DetallePedido;
 import com.ev1.cloudnative.model.Pedido;
-import org.springframework.stereotype.Component;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 
-import java.util.List;
+@Mapper(componentModel = "spring")
+public interface PedidoMapper {
 
-@Component
-public class PedidoMapper {
+    // MapStruct mapará la lista de detalles automáticamente usando toDetalleDto
+    PedidoResponseDto toDto(Pedido entity);
 
-    public PedidoResponseDto toDto(Pedido entity) {
-        if (entity == null) return null;
-
-        List<DetalleResponseDto> detallesDto = entity.getDetalles().stream()
-            .map(this::toDetalleDto)
-            .toList();
-
-        return new PedidoResponseDto(
-            entity.getIdPedido(),
-            entity.getDescPedido(),
-            entity.getUsuarioEmail(),
-            entity.getMontoTotal(),
-            entity.getEstado(),
-            entity.getFechaPedido(),
-            detallesDto
-        );
-    }
-
-    private DetalleResponseDto toDetalleDto(DetallePedido detalle) {
-        double subtotal = detalle.getPrecioUnitario() * detalle.getCantidad();
-        return new DetalleResponseDto(
-            detalle.getProducto().getIdProducto(),
-            detalle.getProducto().getNombre(),
-            detalle.getCantidad(),
-            detalle.getPrecioUnitario(),
-            subtotal
-        );
-    }
+    // Mapeo del detalle con atributos anidados de 'producto' y cálculo de subtotal
+    @Mapping(target = "productoId", source = "producto.idProducto")
+    @Mapping(target = "nombreProducto", source = "producto.nombre")
+    @Mapping(target = "cantidad", source = "cantidad")
+    @Mapping(target = "precioUnitario", source = "precioUnitario")
+    @Mapping(target = "subtotal", expression = "java(detalle.getPrecioUnitario() * detalle.getCantidad())")
+    DetalleResponseDto toDetalleDto(DetallePedido detalle);
 }
