@@ -11,3 +11,6 @@ th, td { border-bottom: 1px solid #e5e7eb; padding: 0.5rem; text-align: left; }
 .btn.secondary { background: #e5e7eb; }
 .btn.danger { background: #dc2626; color: #fff; }
 .btn.small { padding: 0.3rem 0.6rem; font-size: 0.85rem; }
+.estado { font-size: 0.8rem; font-weight: 600; padding: 0.2rem 0.5rem; border-radius: 999px; background: #eef2ff; color: #3730a3; }
+.small { font-size: 0.85rem; }
+a.btn { text-decoration: none; display: inline-block; }

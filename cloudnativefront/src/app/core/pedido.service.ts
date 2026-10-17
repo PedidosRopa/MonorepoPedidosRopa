@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { Pedido } from './models';
+import { Pedido, PedidoRequest } from './models';
 import { environment } from '../../environments/environment';
 
 // El token se inyecta solo vía MsalInterceptor (protectedResourceMap).
@@ -19,7 +19,8 @@ export class PedidoService {
     return this.http.get<Pedido[]>(`${this.base}/mis-pedidos`);
   }
 
-  crear(pedido: Pick<Pedido, 'descPedido' | 'montoTotal' | 'estado'>): Observable<Pedido> {
+  /** POST /api/pedidos con PedidoRequestDto { descPedido, items }. El backend calcula monto y estado. */
+  crear(pedido: PedidoRequest): Observable<Pedido> {
     return this.http.post<Pedido>(this.base, pedido);
   }
 

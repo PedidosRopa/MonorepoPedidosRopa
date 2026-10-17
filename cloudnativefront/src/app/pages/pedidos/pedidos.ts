@@ -1,12 +1,12 @@
 import { Component, inject, signal, OnInit } from '@angular/core';
-import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { PedidoService } from '../../core/pedido.service';
 import { Pedido } from '../../core/models';
 
 @Component({
   selector: 'app-pedidos',
   standalone: true,
-  imports: [FormsModule],
+  imports: [RouterLink],
   templateUrl: './pedidos.html',
   styleUrl: './pedidos.css',
 })
@@ -17,10 +17,6 @@ export class PedidosComponent implements OnInit {
   protected readonly loading = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly soloMios = signal(true);
-
-  protected descPedido = '';
-  protected montoTotal: number | null = null;
-  protected estado = 'PENDIENTE';
 
   ngOnInit(): void {
     this.cargar();
@@ -49,22 +45,6 @@ export class PedidosComponent implements OnInit {
   toggleFiltro(): void {
     this.soloMios.update((v) => !v);
     this.cargar();
-  }
-
-  crear(): void {
-    if (!this.descPedido || this.montoTotal === null) {
-      this.error.set('Completa la descripción y el monto total.');
-      return;
-    }
-    this.api.crear({ descPedido: this.descPedido, montoTotal: this.montoTotal, estado: this.estado }).subscribe({
-      next: (nuevo) => {
-        this.pedidos.update((list) => [...list, nuevo]);
-        this.descPedido = '';
-        this.montoTotal = null;
-        this.estado = 'PENDIENTE';
-      },
-      error: (err) => this.error.set(`No se pudo crear el pedido: ${err?.message ?? 'error'}`),
-    });
   }
 
   eliminar(id?: number): void {

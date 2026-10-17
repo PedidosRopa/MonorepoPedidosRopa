@@ -23,6 +23,11 @@ export class ProductosComponent implements OnInit {
   protected descripcion = '';
   protected precio: number | null = null;
   protected stock: number | null = null;
+  protected categoria = '';
+  protected talla = '';
+  protected genero = '';
+  protected filtroCategoria = '';
+  protected filtroTalla = '';
 
   ngOnInit(): void {
     this.cargar();
@@ -31,7 +36,12 @@ export class ProductosComponent implements OnInit {
   cargar(): void {
     this.loading.set(true);
     this.error.set(null);
-    this.api.listar().subscribe({
+    this.api
+      .listar({
+        categoria: this.filtroCategoria || undefined,
+        talla: this.filtroTalla || undefined,
+      })
+      .subscribe({
       next: (data) => {
         this.productos.set(data);
         this.loading.set(false);
@@ -44,13 +54,21 @@ export class ProductosComponent implements OnInit {
   }
 
   crear(): void {
-    if (!this.nombre || this.precio === null || this.stock === null) {
-      this.error.set('Completa nombre, precio y stock para crear el producto.');
+    if (!this.nombre || this.precio === null || this.stock === null || !this.categoria || !this.talla) {
+      this.error.set('Completa nombre, precio, stock, categoría y talla (obligatorios en el backend).');
       return;
     }
     this.error.set(null);
     this.api
-      .crear({ nombre: this.nombre, descripcion: this.descripcion, precio: this.precio, stock: this.stock })
+      .crear({
+        nombre: this.nombre,
+        descripcion: this.descripcion,
+        precio: this.precio,
+        stock: this.stock,
+        categoria: this.categoria,
+        talla: this.talla,
+        genero: this.genero || undefined,
+      })
       .subscribe({
         next: (nuevo) => {
           this.productos.update((list) => [...list, nuevo]);
@@ -58,6 +76,9 @@ export class ProductosComponent implements OnInit {
           this.descripcion = '';
           this.precio = null;
           this.stock = null;
+          this.categoria = '';
+          this.talla = '';
+          this.genero = '';
         },
         error: (err) => {
           if (err?.status === 401 || err?.status === 403) {

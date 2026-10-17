@@ -1,0 +1,54 @@
+<section class="page">
+  <h1>Administración RabbitMQ</h1>
+  <p class="muted">
+    Consume el microservicio administrador: <code>/api/admin/rabbitmq</code> con Bearer JWT.
+    Crea y elimina colas, exchanges y bindings.
+  </p>
+
+  @if (error()) {
+    <p class="error">{{ error() }}</p>
+  }
+  @if (mensaje()) {
+    <p class="ok">{{ mensaje() }}</p>
+  }
+  @if (!auth.isLoggedIn()) {
+    <p class="warn">Necesitas iniciar sesión para administrar RabbitMQ.</p>
+  }
+
+  <div class="card">
+    <h2>Colas</h2>
+    <form class="form" (ngSubmit)="crearCola()">
+      <input [(ngModel)]="colaNombre" name="colaNombre" placeholder="Nombre (letras, números, . _ -)" required />
+      <label class="check">
+        <input type="checkbox" [(ngModel)]="colaDurable" name="colaDurable" />
+        Durable
+      </label>
+      <button class="btn primary" type="submit" [disabled]="trabajando()">Crear</button>
+      <button class="btn danger" type="button" (click)="eliminarCola()" [disabled]="trabajando()">Eliminar</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2>Exchanges</h2>
+    <form class="form" (ngSubmit)="crearExchange()">
+      <input [(ngModel)]="exchangeNombre" name="exchangeNombre" placeholder="Nombre" required />
+      <select [(ngModel)]="exchangeTipo" name="exchangeTipo">
+        <option value="direct">direct</option>
+        <option value="topic">topic</option>
+        <option value="fanout">fanout</option>
+      </select>
+      <button class="btn primary" type="submit" [disabled]="trabajando()">Crear</button>
+      <button class="btn danger" type="button" (click)="eliminarExchange()" [disabled]="trabajando()">Eliminar</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2>Bindings</h2>
+    <form class="form" (ngSubmit)="crearBinding()">
+      <input [(ngModel)]="bindingExchange" name="bindingExchange" placeholder="Exchange" required />
+      <input [(ngModel)]="bindingCola" name="bindingCola" placeholder="Cola" required />
+      <input [(ngModel)]="bindingRoutingKey" name="bindingRoutingKey" placeholder="Routing key" required />
+      <button class="btn primary" type="submit" [disabled]="trabajando()">Crear</button>
+    </form>
+  </div>
+</section>
