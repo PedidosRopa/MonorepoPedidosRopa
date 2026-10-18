@@ -3,6 +3,7 @@
 .error { background: #fef2f2; color: #991b1b; padding: 0.6rem; border-radius: 6px; }
 .warn { background: #fffbeb; padding: 0.6rem; border-radius: 6px; }
 .form { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 1rem 0; }
+.form.filtros { margin-bottom: 1.5rem; }
 .form input { padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 6px; flex: 1 1 160px; }
 table { width: 100%; border-collapse: collapse; }
 th, td { border-bottom: 1px solid #e5e7eb; padding: 0.5rem; text-align: left; }

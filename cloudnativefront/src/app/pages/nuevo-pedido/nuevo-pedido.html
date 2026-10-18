@@ -1,0 +1,78 @@
+<section class="page">
+  <h1>Nuevo pedido</h1>
+  <p class="muted">
+    Arma tu pedido eligiendo cantidades y envíalo con
+    <code>POST /api/pedidos</code> (Bearer JWT). El monto total lo calcula el backend.
+  </p>
+
+  @if (error()) {
+    <p class="error">{{ error() }}</p>
+  }
+  @if (mensaje()) {
+    <p class="ok">{{ mensaje() }}</p>
+  }
+
+  <div class="toolbar">
+    <button class="btn secondary" (click)="cargar()">Recargar</button>
+    <a class="btn secondary" routerLink="/pedidos">Ver mis pedidos</a>
+  </div>
+
+  <form class="form filtros" (ngSubmit)="cargar()">
+    <input [(ngModel)]="filtroCategoria" name="filtroCategoria" placeholder="Filtrar por categoría" />
+    <input [(ngModel)]="filtroTalla" name="filtroTalla" placeholder="Filtrar por talla" />
+    <button class="btn secondary" type="submit">Aplicar filtros</button>
+  </form>
+
+  @if (loading()) {
+    <p>Cargando…</p>
+  } @else {
+    <table>
+      <thead>
+        <tr>
+          <th>Producto</th>
+          <th>Categoría</th>
+          <th>Talla</th>
+          <th>Precio</th>
+          <th>Stock</th>
+          <th>Cantidad</th>
+          <th>Subtotal</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (p of productos(); track p.idProducto) {
+          <tr>
+            <td>{{ p.nombre }}</td>
+            <td>{{ p.categoria }}</td>
+            <td>{{ p.talla }}</td>
+            <td>{{ p.precio }}</td>
+            <td>{{ p.stock }}</td>
+            <td>
+              <input
+                class="qty"
+                type="number"
+                min="0"
+                [max]="p.stock"
+                [value]="cantidades()[p.idProducto!] ?? 0"
+                (input)="cambiarCantidad(p, $any($event.target).valueAsNumber)"
+              />
+            </td>
+            <td>{{ (cantidades()[p.idProducto!] ?? 0) * p.precio }}</td>
+          </tr>
+        } @empty {
+          <tr><td colspan="7">Sin productos disponibles.</td></tr>
+        }
+      </tbody>
+    </table>
+  }
+
+  <div class="resumen card">
+    <p><strong>Items seleccionados:</strong> {{ items().length }}</p>
+    <p><strong>Monto estimado:</strong> {{ total() }}</p>
+    <form class="form" (ngSubmit)="crearPedido()">
+      <input [(ngModel)]="descPedido" name="descPedido" placeholder="Descripción del pedido (opcional)" />
+      <button class="btn primary" type="submit" [disabled]="enviando() || items().length === 0">
+        Crear pedido
+      </button>
+    </form>
+  </div>
+</section>

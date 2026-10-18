@@ -1,6 +1,34 @@
 # Cloudnativefront
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 22.1.8.
+Frontend Angular 22 (standalone components + SSR) del sistema de pedidos de ropa.
+Consume el backend `cloudnative` (Spring Boot) vía REST con un JWT de Microsoft Entra ID (IDaaS) inyectado automáticamente por `MsalInterceptor`.
+
+## Funcionalidades (alineadas con el backend)
+
+| Vista | Ruta | Endpoint(s) del backend |
+| --- | --- | --- |
+| Productos | `/productos` (pública) | `GET/POST/DELETE /api/productos` (+ filtros `?categoria=&talla=`) |
+| Nuevo pedido | `/nuevo-pedido` (protegida) | `POST /api/pedidos` con `{ descPedido, items }` (el monto y estado los calcula el back) |
+| Mis pedidos | `/pedidos` (protegida) | `GET /api/pedidos`, `GET /api/pedidos/mis-pedidos`, `DELETE /api/pedidos/{id}` |
+| Admin RabbitMQ | `/admin-rabbit` (protegida) | `POST/DELETE /api/admin/rabbitmq/{queues,exchanges,bindings}` |
+| Login | `/login` | OAuth 2.0 / OpenID Connect con Microsoft Entra ID (MSAL redirected flow) |
+
+- El JWT se envía como `Authorization: Bearer <token>` en cada llamada a `/api/*` (ver `src/app/auth/auth.config.ts` → `protectedResourceMap`).
+- Los modelos/DTOs de `src/app/core/models.ts` reflejan los `dtos` del backend (`PedidoRequestDto`, `PedidoResponseDto`, `ProductoDto`, `QueueRequestDTO`, `ExchangeRequestDTO`, `BindingRequestDTO`).
+
+## Ejecución local
+
+1. Levanta el backend (`../cloudnative`, usa RabbitMQ con `docker-compose up -d rabbitmq` si vas a probar mensajería).
+2. Levanta el frontend:
+
+```bash
+npm install
+ng serve
+```
+
+- `ng serve` usa la configuración **development** (`environment.development.ts`): backend en `http://localhost:8080` y redirect en `http://localhost:4200`.
+- Para que el login funcione en local, la app registration de Entra ID debe tener `http://localhost:4200` como redirect URI (SPA).
+- `ng build` (producción) usa `environment.ts`: apunta al API Gateway (`apiBaseUrl`) y a los redirect URIs desplegados en la nube, listo para desplegar sin cambios adicionales.
 
 ## Development server
 
