@@ -1,0 +1,53 @@
+name: Deploy Backend to AWS EC2
+
+on:
+  push:
+    branches: [ "deploy" ]
+    paths:
+      - 'cloudnative/**'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Conectar a EC2 y desplegar Backend con Docker Compose
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            # 1. Clonar el repositorio si no existe en la EC2
+            if [ ! -d "app" ]; then
+              git clone https://github.com/DebugggMax/MonorepoPedidosRopa.git app
+            fi
+
+            # 2. Entrar a la carpeta y asegurar la rama deploy
+            cd app
+            git fetch origin
+            git checkout deploy
+            git pull origin deploy
+
+            # 3. Navegar a la carpeta del backend
+            cd cloudnative
+
+            # 4. Crear / sobrescribir el archivo .env con los Secrets
+            cat << EOF > .env
+            SPRING_PROFILES_ACTIVE=prod
+            AZURE_TENANT_ID=${{ secrets.AZURE_TENANT_ID }}
+            AZURE_CLIENT_ID=${{ secrets.AZURE_CLIENT_ID }}
+            DB_URL=${{ secrets.DB_URL }}
+            DB_USERNAME=${{ secrets.DB_USERNAME }}
+            DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+            RABBITMQ_HOST=rabbitmq
+            RABBITMQ_PORT=5672
+            RABBITMQ_USERNAME=guest
+            RABBITMQ_PASSWORD=guest
+            EOF
+
+            # 5. Reiniciar contenedores e iniciar en segundo plano
+            docker compose down || docker-compose down
+            docker compose up -d --build || docker-compose up -d --build
+
+            # 6. Limpieza de imágenes antiguas
+            docker image prune -f

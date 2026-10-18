@@ -1,0 +1,126 @@
+<section class="py-10">
+  <header class="mb-4">
+    <h1 class="title-grad text-3xl font-bold md:text-4xl">Nuevo pedido</h1>
+    <p class="mt-2 text-slate-400">
+      Arma tu pedido eligiendo cantidades y envíalo con
+      <code class="rounded bg-white/5 px-1.5 py-0.5 text-sm text-violet-300">POST /api/pedidos</code>
+      (Bearer JWT). El monto total lo calcula el backend.
+    </p>
+  </header>
+
+  @if (error()) {
+    <p class="mb-6 rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-rose-200">{{ error() }}</p>
+  }
+  @if (mensaje()) {
+    <p class="mb-6 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-emerald-200">{{ mensaje() }}</p>
+  }
+
+  <div class="mb-6 flex flex-wrap gap-3">
+    <button class="btn-ghost" (click)="cargar()">Recargar</button>
+    <a class="btn-ghost" routerLink="/pedidos">Ver mis pedidos</a>
+  </div>
+
+  <!-- Filtros -->
+  <form class="mb-8 flex flex-wrap gap-3" (ngSubmit)="cargar()">
+    <input
+      class="input-neon flex-1 sm:max-w-64"
+      [(ngModel)]="filtroCategoria"
+      name="filtroCategoria"
+      placeholder="Filtrar por categoría"
+    />
+    <input
+      class="input-neon flex-1 sm:max-w-64"
+      [(ngModel)]="filtroTalla"
+      name="filtroTalla"
+      placeholder="Filtrar por talla"
+    />
+    <button class="btn-ghost" type="submit">Aplicar filtros</button>
+  </form>
+
+  <div class="grid gap-8 lg:grid-cols-[1fr_20rem]">
+    <!-- Catálogo editable -->
+    @if (loading()) {
+      <p class="animate-pulse text-slate-400">Cargando productos…</p>
+    } @else {
+      <div class="grid gap-4 sm:grid-cols-2">
+        @for (p of productos(); track p.idProducto) {
+          <article class="glass glass-hover flex flex-col gap-3 p-5">
+            <div class="flex flex-wrap gap-2">
+              <span class="rounded-full border border-violet-400/30 bg-violet-500/10 px-2.5 py-0.5 text-xs font-medium text-violet-200">{{ p.categoria }}</span>
+              <span class="rounded-full border border-blue-400/30 bg-blue-500/10 px-2.5 py-0.5 text-xs font-medium text-blue-200">Talla {{ p.talla }}</span>
+            </div>
+
+            <h2 class="font-display text-lg leading-snug font-semibold text-white">{{ p.nombre }}</h2>
+            <p class="line-clamp-2 text-sm text-slate-400">{{ p.descripcion || 'Sin descripción' }}</p>
+
+            <div class="flex items-end justify-between">
+              <p class="text-sm text-slate-400">Stock: <span class="text-slate-200">{{ p.stock }}</span></p>
+              <p class="title-grad font-display text-xl font-bold">${{ p.precio }}</p>
+            </div>
+
+            <div class="mt-auto flex items-center justify-between rounded-xl border border-white/10 bg-white/5 p-2">
+              <button
+                type="button"
+                class="flex h-9 w-9 items-center justify-center rounded-lg border border-violet-400/30 bg-violet-500/10 text-lg leading-none text-violet-200 transition hover:bg-violet-500/25 disabled:opacity-40"
+                [disabled]="(cantidades()[p.idProducto!] ?? 0) === 0"
+                (click)="cambiarCantidad(p, (cantidades()[p.idProducto!] ?? 0) - 1)"
+                aria-label="Quitar una unidad"
+              >−</button>
+
+              <input
+                class="w-14 border-0 bg-transparent text-center font-semibold text-white focus:outline-none"
+                type="number"
+                min="0"
+                [max]="p.stock"
+                [value]="cantidades()[p.idProducto!] ?? 0"
+                (input)="cambiarCantidad(p, $any($event.target).valueAsNumber)"
+                aria-label="Cantidad"
+              />
+
+              <button
+                type="button"
+                class="flex h-9 w-9 items-center justify-center rounded-lg border border-blue-400/30 bg-blue-500/10 text-lg leading-none text-blue-200 transition hover:bg-blue-500/25 disabled:opacity-40"
+                [disabled]="(cantidades()[p.idProducto!] ?? 0) >= p.stock"
+                (click)="cambiarCantidad(p, (cantidades()[p.idProducto!] ?? 0) + 1)"
+                aria-label="Agregar una unidad"
+              >+</button>
+            </div>
+          </article>
+        } @empty {
+          <p class="col-span-full rounded-2xl border border-white/10 bg-white/5 px-4 py-8 text-center text-slate-400">
+            Sin productos disponibles.
+          </p>
+        }
+      </div>
+    }
+
+    <!-- Resumen del pedido -->
+    <aside class="glass h-fit p-6 lg:sticky lg:top-24">
+      <h2 class="font-display mb-4 text-lg font-semibold text-white">Resumen del pedido</h2>
+
+      <p class="text-sm text-slate-400">Items seleccionados</p>
+      <p class="font-display text-3xl font-bold text-white">{{ items().length }}</p>
+
+      <p class="mt-4 text-sm text-slate-400">Monto estimado</p>
+      <p class="title-grad font-display text-4xl font-bold">{{ total() }}</p>
+
+      <form class="mt-6 flex flex-col gap-3" (ngSubmit)="crearPedido()">
+        <input
+          class="input-neon"
+          [(ngModel)]="descPedido"
+          name="descPedido"
+          placeholder="Descripción (opcional)"
+        />
+        <button class="btn-grad w-full" type="submit" [disabled]="enviando() || items().length === 0">
+          Crear pedido
+        </button>
+      </form>
+
+      <p class="mt-4 text-xs text-slate-500">
+        Se enviará
+        <code class="text-violet-300">&#123; descPedido, items &#125;</code> con Bearer JWT
+        y se procesará vía RabbitMQ.
+      </p>
+    </aside>
+  </div>
+</section>

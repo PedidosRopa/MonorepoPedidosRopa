@@ -1,0 +1,14 @@
+{
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Spring Boot-CloudnativeApplication<cloudnative>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "mainClass": "com.ev1.cloudnative.CloudnativeApplication",
+            "projectName": "cloudnative",
+            "args": "",
+            "envFile": "${workspaceFolder}/.env"
+        }
+    ]
+}

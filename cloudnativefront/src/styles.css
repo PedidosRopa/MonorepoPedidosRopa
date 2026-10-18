@@ -1,1 +1,118 @@
-/* You can add global styles to this file, and also import other style files */
+/* ============================================================
+   PedidosRopa — Design system "Aurora Nebular" (Tailwind CSS v4)
+   Paleta morada/azul, glassmorphism, glows neón, dark-first.
+   ============================================================ */
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Space Grotesk", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+
+  /* Fondo "nebulosa" profunda (morado oscuro → índigo) */
+  --color-nebula-950: #0b0716;
+  --color-nebula-900: #17102b;
+  --color-nebula-800: #21184a;
+  --color-nebula-700: #2b2054;
+
+  /* Sombras neón */
+  --shadow-glow-purple: 0 0 24px 2px rgb(139 92 246 / 0.35);
+  --shadow-glow-blue: 0 0 24px 2px rgb(59 130 246 / 0.35);
+  --shadow-glow-mixed:
+    0 8px 40px -8px rgb(124 58 237 / 0.45),
+    0 8px 40px -12px rgb(59 130 246 / 0.3);
+
+  /* Animaciones de la aurora */
+  --animate-float-slow: aurora-float 18s ease-in-out infinite;
+  --animate-float-slower: aurora-float 26s ease-in-out infinite reverse;
+
+  @keyframes aurora-float {
+    0%,
+    100% {
+      transform: translate3d(0, 0, 0) scale(1);
+    }
+    33% {
+      transform: translate3d(6rem, -4rem, 0) scale(1.15);
+    }
+    66% {
+      transform: translate3d(-5rem, 3rem, 0) scale(0.95);
+    }
+  }
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-nebula-950 font-sans text-slate-100 antialiased;
+  }
+
+  ::selection {
+    @apply bg-violet-500/40;
+  }
+}
+
+@layer components {
+  /* Panel de vidrio (glassmorphism) */
+  .glass {
+    @apply rounded-2xl border border-white/10 bg-white/5 shadow-glow-mixed backdrop-blur-xl;
+  }
+
+  .glass-hover {
+    @apply transition-colors hover:border-violet-400/40 hover:shadow-glow-purple;
+  }
+
+  /* Botones */
+  .btn-grad {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 font-semibold text-white transition-all
+      bg-linear-to-r from-violet-600 via-indigo-600 to-blue-600 shadow-glow-purple
+      hover:brightness-110 hover:shadow-glow-blue disabled:pointer-events-none disabled:opacity-50;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-violet-400/30 bg-violet-500/10
+      px-5 py-2.5 font-semibold text-violet-200 transition-all hover:border-violet-300/50 hover:bg-violet-500/20
+      disabled:pointer-events-none disabled:opacity-50;
+  }
+
+  .btn-danger {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10
+      px-5 py-2.5 font-semibold text-rose-200 transition-all hover:border-rose-400/60 hover:bg-rose-500/20
+      disabled:pointer-events-none disabled:opacity-50;
+  }
+
+  /* Inputs con foco luminoso */
+  .input-neon {
+    @apply w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-slate-100 transition
+      placeholder:text-slate-500 focus:border-violet-400/60 focus:outline-none focus:ring-2 focus:ring-violet-500/30;
+  }
+
+  /* Título con gradiente */
+  .title-grad {
+    @apply bg-linear-to-r from-violet-400 via-indigo-400 to-blue-400 bg-clip-text font-display text-transparent;
+  }
+
+  /* Nav del navbar (usado con routerLinkActive) */
+  .nav-link {
+    @apply relative rounded-lg px-3 py-1.5 text-sm font-medium text-slate-400 transition-colors hover:text-white;
+  }
+
+  .nav-link.link-active {
+    @apply text-white;
+  }
+
+  .nav-link.link-active::after {
+    content: "";
+    @apply absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-linear-to-r from-violet-500 to-blue-500 shadow-glow-purple;
+  }
+}
+
+/* Textura de rejilla sutil para el fondo aurora */
+@utility bg-grid {
+  background-image:
+    linear-gradient(to right, rgb(255 255 255 / 0.035) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(255 255 255 / 0.035) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 40%, transparent 100%);
+}

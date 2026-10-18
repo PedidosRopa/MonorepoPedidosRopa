@@ -1,0 +1,79 @@
+<section class="py-10">
+  <header class="mb-4">
+    <h1 class="title-grad text-3xl font-bold md:text-4xl">Administración RabbitMQ</h1>
+    <p class="mt-2 text-slate-400">
+      Consume el microservicio administrador:
+      <code class="rounded bg-white/5 px-1.5 py-0.5 text-sm text-violet-300">/api/admin/rabbitmq</code>
+      con Bearer JWT. Crea y elimina colas, exchanges y bindings.
+    </p>
+  </header>
+
+  @if (error()) {
+    <p class="mb-6 rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-rose-200">{{ error() }}</p>
+  }
+  @if (mensaje()) {
+    <p class="mb-6 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-emerald-200">{{ mensaje() }}</p>
+  }
+  @if (!auth.isLoggedIn()) {
+    <p class="mb-6 rounded-2xl border border-amber-400/30 bg-amber-500/10 px-4 py-3 text-amber-100">
+      Necesitas iniciar sesión para administrar RabbitMQ.
+    </p>
+  }
+
+  <div class="grid gap-6 lg:grid-cols-3">
+
+    <!-- Colas (violeta) -->
+    <div class="glass p-6">
+      <div class="mb-4 flex items-center gap-3">
+        <span class="h-3 w-3 rounded-full bg-violet-500 shadow-glow-purple"></span>
+        <h2 class="font-display text-lg font-semibold text-white">Colas</h2>
+      </div>
+      <form class="flex flex-col gap-3" (ngSubmit)="crearCola()">
+        <input class="input-neon" [(ngModel)]="colaNombre" name="colaNombre" placeholder="Nombre (letras, números, . _ -)" required />
+        <label class="flex cursor-pointer items-center gap-2 text-sm text-slate-300">
+          <input type="checkbox" [(ngModel)]="colaDurable" name="colaDurable"
+            class="h-4 w-4 rounded border-white/20 bg-white/5 accent-violet-500" />
+          Durable
+        </label>
+        <div class="flex flex-wrap gap-2">
+          <button class="btn-grad flex-1" type="submit" [disabled]="trabajando()">Crear</button>
+          <button class="btn-danger" type="button" (click)="eliminarCola()" [disabled]="trabajando()">Eliminar</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Exchanges (azul) -->
+    <div class="glass p-6">
+      <div class="mb-4 flex items-center gap-3">
+        <span class="h-3 w-3 rounded-full bg-blue-500 shadow-glow-blue"></span>
+        <h2 class="font-display text-lg font-semibold text-white">Exchanges</h2>
+      </div>
+      <form class="flex flex-col gap-3" (ngSubmit)="crearExchange()">
+        <input class="input-neon" [(ngModel)]="exchangeNombre" name="exchangeNombre" placeholder="Nombre" required />
+        <select class="input-neon" [(ngModel)]="exchangeTipo" name="exchangeTipo">
+          <option value="direct" class="bg-nebula-900">direct</option>
+          <option value="topic" class="bg-nebula-900">topic</option>
+          <option value="fanout" class="bg-nebula-900">fanout</option>
+        </select>
+        <div class="flex flex-wrap gap-2">
+          <button class="btn-grad flex-1" type="submit" [disabled]="trabajando()">Crear</button>
+          <button class="btn-danger" type="button" (click)="eliminarExchange()" [disabled]="trabajando()">Eliminar</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Bindings (índigo) -->
+    <div class="glass p-6">
+      <div class="mb-4 flex items-center gap-3">
+        <span class="h-3 w-3 rounded-full bg-indigo-500 shadow-glow-blue"></span>
+        <h2 class="font-display text-lg font-semibold text-white">Bindings</h2>
+      </div>
+      <form class="flex flex-col gap-3" (ngSubmit)="crearBinding()">
+        <input class="input-neon" [(ngModel)]="bindingExchange" name="bindingExchange" placeholder="Exchange" required />
+        <input class="input-neon" [(ngModel)]="bindingCola" name="bindingCola" placeholder="Cola" required />
+        <input class="input-neon" [(ngModel)]="bindingRoutingKey" name="bindingRoutingKey" placeholder="Routing key" required />
+        <button class="btn-grad" type="submit" [disabled]="trabajando()">Crear binding</button>
+      </form>
+    </div>
+  </div>
+</section>

@@ -1,18 +1,28 @@
-<nav class="navbar">
-  <a class="brand" routerLink="/productos">PedidosRopa</a>
+<nav class="sticky top-0 z-20 border-b border-white/10 bg-nebula-950/70 backdrop-blur-xl">
+  <div class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3">
+    <a
+      class="title-grad font-display text-xl font-bold tracking-tight"
+      routerLink="/productos"
+    >PedidosRopa</a>
 
-  <div class="links">
-    <a routerLink="/productos" routerLinkActive="active">Productos</a>
-    <a routerLink="/pedidos" routerLinkActive="active">Mis pedidos</a>
-    <a routerLink="/login" routerLinkActive="active">Login</a>
-  </div>
+    <div class="links flex flex-wrap items-center gap-1 sm:gap-2">
+      <a routerLink="/productos" routerLinkActive="link-active" class="nav-link">Productos</a>
+      <a routerLink="/nuevo-pedido" routerLinkActive="link-active" class="nav-link">Nuevo pedido</a>
+      <a routerLink="/pedidos" routerLinkActive="link-active" class="nav-link">Mis pedidos</a>
+      <a routerLink="/admin-rabbit" routerLinkActive="link-active" class="nav-link">Admin RabbitMQ</a>
+      <a routerLink="/login" routerLinkActive="link-active" class="nav-link">Login</a>
+    </div>
 
-  <div class="user">
-    @if (auth.isLoggedIn()) {
-      <span class="email" title="Cuenta activa">{{ auth.username() }}</span>
-      <button class="btn secondary" (click)="logout()">Cerrar sesión</button>
-    } @else {
-      <button class="btn primary" (click)="login()">Iniciar sesión</button>
-    }
+    <div class="user flex items-center gap-3">
+      @if (auth.isLoggedIn()) {
+        <span
+          class="hidden max-w-52 truncate rounded-lg border border-white/10 bg-white/5 px-3 py-1 text-sm text-slate-300 md:inline"
+          title="Cuenta activa"
+        >{{ auth.username() }}</span>
+        <button class="btn-ghost px-3 py-1.5 text-sm" (click)="logout()">Cerrar sesión</button>
+      } @else {
+        <button class="btn-grad px-3 py-1.5 text-sm" (click)="login()">Iniciar sesión</button>
+      }
+    </div>
   </div>
 </nav>
