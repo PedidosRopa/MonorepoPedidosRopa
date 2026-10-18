@@ -33,25 +33,22 @@ jobs:
               git reset --hard origin/deploy
             fi
 
-            # Navegar a la carpeta cloudnative (donde está tu pom.xml y Dockerfile)
+            # Navegar a la carpeta cloudnative (donde está tu docker-compose.yml)
             cd cloudnative
 
-            docker stop backend-container 2>/dev/null || true
-            docker rm backend-container 2>/dev/null || true
+            # Exportar las variables de entorno para que docker-compose las tome
+            export AZURE_TENANT_ID="${{ secrets.AZURE_TENANT_ID }}"
+            export AZURE_CLIENT_ID="${{ secrets.AZURE_CLIENT_ID }}"
+            export DB_URL="${{ secrets.DB_URL }}"
+            export DB_USERNAME="${{ secrets.DB_USERNAME }}"
+            export DB_PASSWORD="${{ secrets.DB_PASSWORD }}"
+            export RABBITMQ_HOST="rabbitmq"
+            export RABBITMQ_PORT="5672"
+            export RABBITMQ_USERNAME="guest"
+            export RABBITMQ_PASSWORD="guest"
 
-            # Construir la imagen Docker usando el Dockerfile
-            docker build -t backend-image -f Dockerfile .
-
-            # Levantar el contenedor
-            docker run -d \
-              --name backend-container \
-              --restart unless-stopped \
-              -p 8080:8080 \
-              -e AZURE_TENANT_ID="${{ secrets.AZURE_TENANT_ID }}" \
-              -e AZURE_CLIENT_ID="${{ secrets.AZURE_CLIENT_ID }}" \
-              -e DB_URL="${{ secrets.DB_URL }}" \
-              -e DB_USERNAME="${{ secrets.DB_USERNAME }}" \
-              -e DB_PASSWORD="${{ secrets.DB_PASSWORD }}" \
-              backend-image
+            # Detener contenedores anteriores y reconstruir/levantar todo
+            docker compose down || true
+            docker compose up -d --build
 
             docker image prune -f
