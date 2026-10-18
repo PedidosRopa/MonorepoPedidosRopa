@@ -4,13 +4,13 @@ on:
   push:
     branches: [ "deploy" ]
     paths:
-      - 'backend/**'
+      - 'cloudnative/**'
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Conectar a EC2 y desplegar Backend
+      - name: Conectar a EC2 y desplegar Backend con Docker Compose
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST }}
@@ -18,26 +18,33 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             if [ ! -d "app" ]; then
-              git clone https://github.com/TU_USUARIO/TU_REPOSITO.git app
+              git clone https://github.com/DebugggMax/PedidosRopa/MonorepoPedidosRopa. app
             fi
             cd app
             git pull origin deploy
             
-            # Navegar a la carpeta del backend
-            cd backend
+            # Navegar a la carpeta real del backend
+            cd cloudnative
 
-            # Reconstruir únicamente el contenedor del backend
-            docker stop backend-container || true
-            docker rm backend-container || true
+            # 1. Crear / sobrescribir el archivo .env con las variables de GitHub Secrets
+            cat << EOF > .env
+            SPRING_PROFILES_ACTIVE=prod
+            AZURE_TENANT_ID=${{ secrets.AZURE_TENANT_ID }}
+            AZURE_CLIENT_ID=${{ secrets.AZURE_CLIENT_ID }}
+            DB_URL=${{ secrets.DB_URL }}
+            DB_USERNAME=${{ secrets.DB_USERNAME }}
+            DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+            RABBITMQ_HOST=rabbitmq
+            RABBITMQ_PORT=5672
+            RABBITMQ_USERNAME=guest
+            RABBITMQ_PASSWORD=guest
+            EOF
 
-            docker build -t backend-image .
+            # 2. Detener los servicios actuales
+            docker compose down || docker-compose down
 
-            docker run -d \
-              --name backend-container \
-              -p 8080:8080 \
-              -e AZURE_TENANT_ID="${{ secrets.AZURE_TENANT_ID }}" \
-              -e AZURE_CLIENT_ID="${{ secrets.AZURE_CLIENT_ID }}" \
-              -e DB_URL="${{ secrets.DB_URL }}" \
-              -e DB_USERNAME="${{ secrets.DB_USERNAME }}" \
-              -e DB_PASSWORD="${{ secrets.DB_PASSWORD }}" \
-              backend-image
+            # 3. Reconstruir e iniciar los contenedores en segundo plano
+            docker compose up -d --build || docker-compose up -d --build
+
+            # 4. Limpiar imágenes no utilizadas en la EC2
+            docker image prune -f
