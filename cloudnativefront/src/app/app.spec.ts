@@ -46,6 +46,6 @@ describe('App', () => {
     const fixture = TestBed.createComponent(App);
     await fixture.whenStable();
     const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('.brand')?.textContent).toContain('PedidosRopa');
+    expect(compiled.querySelector('nav a')?.textContent).toContain('PedidosRopa');
   });
 });

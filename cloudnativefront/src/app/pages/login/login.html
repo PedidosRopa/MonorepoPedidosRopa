@@ -1,33 +1,52 @@
-<section class="login">
-  <h1>Iniciar sesión</h1>
-  <p class="muted">
-    El login usa Microsoft Entra ID (Azure) con MSAL.
-    Tras el login, el <code>MsalInterceptor</code> inyecta
-    <code>Authorization: Bearer &lt;JWT&gt;</code> en cada request al backend.
+<section class="flex flex-col items-center py-16 text-center">
+  <!-- Marca flotante -->
+  <div class="mb-8 flex h-16 w-16 items-center justify-center rounded-2xl bg-linear-to-br from-violet-600 to-blue-600 shadow-glow-purple">
+    <span class="font-display text-2xl font-bold text-white">P</span>
+  </div>
+
+  <h1 class="title-grad text-4xl font-bold md:text-5xl">Iniciar sesión</h1>
+  <p class="mt-4 max-w-2xl text-slate-400">
+    El login usa Microsoft Entra ID (Azure) con MSAL. Tras el login, el
+    <code class="rounded bg-white/5 px-1.5 py-0.5 text-sm text-violet-300">MsalInterceptor</code>
+    inyecta <code class="rounded bg-white/5 px-1.5 py-0.5 text-sm text-violet-300">Authorization: Bearer &lt;JWT&gt;</code>
+    en cada request al backend.
   </p>
 
   @if (!auth.isLoggedIn()) {
-    <button class="btn primary" (click)="login()">Iniciar sesión con Microsoft</button>
-    <p class="muted small">
-      Serás redirigido a <code>login.microsoftonline.com</code> con el
-      <code>clientId</code> y <code>tenantId</code> configurados en
-      <code>src/environments/environment*.ts</code>.
-    </p>
+    <div class="glass mt-10 flex w-full max-w-xl flex-col items-center gap-5 p-8">
+      <button class="btn-grad w-full text-lg" (click)="login()">Iniciar sesión con Microsoft</button>
+      <p class="text-sm text-slate-500">
+        Serás redirigido a <code class="text-violet-300">login.microsoftonline.com</code> con el
+        <code class="text-violet-300">clientId</code> y <code class="text-violet-300">tenantId</code> configurados en
+        <code class="text-violet-300">src/environments/environment*.ts</code>.
+      </p>
+    </div>
   } @else {
-    <div class="card">
-      <p><strong>Sesión activa:</strong> {{ auth.username() }}</p>
-      <div class="row">
-        <button class="btn secondary" (click)="verToken()" [disabled]="loadingToken()">
+    <div class="glass mt-10 w-full max-w-xl p-8 text-left">
+      <p class="mb-6 flex flex-wrap items-center justify-between gap-2">
+        <span class="text-slate-500">Sesión activa</span>
+        <span class="rounded-lg border border-violet-400/30 bg-violet-500/10 px-3 py-1 font-semibold text-violet-200">
+          {{ auth.username() }}
+        </span>
+      </p>
+
+      <div class="flex flex-wrap gap-3">
+        <button class="btn-ghost" (click)="verToken()" [disabled]="loadingToken()">
           {{ loadingToken() ? 'Obteniendo token…' : 'Ver token (debug)' }}
         </button>
-        <button class="btn danger" (click)="logout()">Cerrar sesión</button>
+        <button class="btn-danger" (click)="logout()">Cerrar sesión</button>
       </div>
+
       @if (tokenPreview()) {
-        <p class="token">{{ tokenPreview() }}</p>
+        <p class="mt-5 rounded-xl border border-white/10 bg-nebula-900/80 p-4 font-mono text-xs break-all text-slate-400">
+          {{ tokenPreview() }}
+        </p>
       }
-      <p>
-        <a routerLink="/productos">Ir a productos</a> ·
-        <a routerLink="/pedidos">Ir a mis pedidos</a>
+
+      <p class="mt-6 flex flex-wrap gap-x-2 gap-y-1 text-sm">
+        <a class="underline decoration-violet-400 underline-offset-4 transition hover:text-violet-300" routerLink="/productos">Ir a productos</a>
+        <span class="text-slate-600">·</span>
+        <a class="underline decoration-blue-400 underline-offset-4 transition hover:text-blue-300" routerLink="/pedidos">Ir a mis pedidos</a>
       </p>
     </div>
   }

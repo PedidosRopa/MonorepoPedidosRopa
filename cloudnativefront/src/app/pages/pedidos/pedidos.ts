@@ -2,11 +2,12 @@ import { Component, inject, signal, OnInit } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { PedidoService } from '../../core/pedido.service';
 import { Pedido } from '../../core/models';
+import { EstadoBadge } from '../../components/ui/estado-badge';
 
 @Component({
   selector: 'app-pedidos',
   standalone: true,
-  imports: [RouterLink],
+  imports: [RouterLink, EstadoBadge],
   templateUrl: './pedidos.html',
   styleUrl: './pedidos.css',
 })
@@ -17,6 +18,14 @@ export class PedidosComponent implements OnInit {
   protected readonly loading = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly soloMios = signal(true);
+
+  /** UI: fila de pedidos expandida (id) para ver detalles. */
+  protected readonly expandido = signal<number | null>(null);
+
+  toggleDetalle(id: number | undefined): void {
+    if (id === undefined) return;
+    this.expandido.update((actual) => (actual === id ? null : id));
+  }
 
   ngOnInit(): void {
     this.cargar();

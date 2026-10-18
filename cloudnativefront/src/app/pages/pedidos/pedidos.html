@@ -1,62 +1,90 @@
-<section class="page">
-  <h1>Mis pedidos</h1>
-  <p class="muted">
-    Ruta protegida con <code>MsalGuard</code>.
-    Consume <code>GET /api/pedidos/mis-pedidos</code> con Bearer JWT automático.
-  </p>
+<section class="py-10">
+  <header class="mb-4">
+    <h1 class="title-grad text-3xl font-bold md:text-4xl">Mis pedidos</h1>
+    <p class="mt-2 text-slate-400">
+      Ruta protegida con <code class="rounded bg-white/5 px-1.5 py-0.5 text-sm text-violet-300">MsalGuard</code>.
+      Consume <code class="rounded bg-white/5 px-1.5 py-0.5 text-sm text-violet-300">GET /api/pedidos</code>
+      con Bearer JWT automático.
+    </p>
+  </header>
 
   @if (error()) {
-    <p class="error">{{ error() }}</p>
+    <p class="mb-6 rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-rose-200">{{ error() }}</p>
   }
 
-  <div class="toolbar">
-    <button class="btn secondary" (click)="toggleFiltro()">
+  <div class="mb-8 flex flex-wrap gap-3">
+    <button class="btn-ghost" (click)="toggleFiltro()">
       {{ soloMios() ? 'Ver todos' : 'Ver solo míos' }}
     </button>
-    <button class="btn secondary" (click)="cargar()">Recargar</button>
-  </div>
-
-  <div class="toolbar">
-    <button class="btn secondary" (click)="toggleFiltro()">
-      {{ soloMios() ? 'Ver todos' : 'Ver solo míos' }}
-    </button>
-    <button class="btn secondary" (click)="cargar()">Recargar</button>
-    <a class="btn primary" routerLink="/nuevo-pedido">Crear nuevo pedido</a>
+    <button class="btn-ghost" (click)="cargar()">Recargar</button>
+    <a class="btn-grad" routerLink="/nuevo-pedido">Crear nuevo pedido</a>
   </div>
 
   @if (loading()) {
-    <p>Cargando…</p>
+    <p class="animate-pulse text-slate-400">Cargando pedidos…</p>
+  } @else if (pedidos().length === 0) {
+    <p class="rounded-2xl border border-white/10 bg-white/5 px-4 py-10 text-center text-slate-400">
+      Sin pedidos aún.
+      <a class="ml-2 underline decoration-violet-400 underline-offset-4 transition hover:text-violet-300" routerLink="/nuevo-pedido">Crea el primero</a>
+    </p>
   } @else {
-    <table>
-      <thead>
-        <tr><th>ID</th><th>Descripción</th><th>Email</th><th>Monto</th><th>Fecha</th><th>Estado</th><th>Detalles</th><th></th></tr>
-      </thead>
-      <tbody>
-        @for (p of pedidos(); track p.idPedido) {
-          <tr>
-            <td>{{ p.idPedido }}</td>
-            <td>{{ p.descPedido }}</td>
-            <td>{{ p.usuarioEmail }}</td>
-            <td>{{ p.montoTotal }}</td>
-            <td>{{ p.fechaPedido }}</td>
-            <td><span class="estado">{{ p.estado }}</span></td>
-            <td>
-              @if (p.detalles?.length) {
-                <span class="small">
-                  @for (d of p.detalles; track d.idProducto) {
-                    {{ d.cantidad }}x {{ d.nombreProducto }} ({{ d.subtotal }})<br />
-                  }
-                </span>
-              } @else {
-                —
-              }
-            </td>
-            <td><button class="btn danger small" (click)="eliminar(p.idPedido)">Eliminar</button></td>
+    <div class="glass overflow-hidden">
+      <table class="w-full text-left text-sm">
+        <thead>
+          <tr class="border-b border-white/10 bg-white/5 text-xs tracking-wide text-slate-400 uppercase">
+            <th class="px-4 py-3">ID</th>
+            <th class="px-4 py-3">Descripción</th>
+            <th class="hidden px-4 py-3 md:table-cell">Email</th>
+            <th class="px-4 py-3">Monto</th>
+            <th class="hidden px-4 py-3 lg:table-cell">Fecha</th>
+            <th class="px-4 py-3">Estado</th>
+            <th class="px-4 py-3"></th>
           </tr>
-        } @empty {
-          <tr><td colspan="8">Sin pedidos.</td></tr>
-        }
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          @for (p of pedidos(); track p.idPedido) {
+            <tr class="border-b border-white/5 transition hover:bg-violet-500/5">
+              <td class="px-4 py-3 font-semibold text-white">#{{ p.idPedido }}</td>
+              <td class="max-w-56 truncate px-4 py-3 text-slate-300">{{ p.descPedido || '—' }}</td>
+              <td class="hidden max-w-48 truncate px-4 py-3 text-slate-400 md:table-cell">{{ p.usuarioEmail }}</td>
+              <td class="px-4 py-3 font-medium text-slate-100">{{ p.montoTotal }}</td>
+              <td class="hidden px-4 py-3 text-slate-400 lg:table-cell">{{ p.fechaPedido }}</td>
+              <td class="px-4 py-3"><app-estado-badge [estado]="p.estado ?? ''" /></td>
+              <td class="px-4 py-3">
+                <div class="flex justify-end gap-2">
+                  <button
+                    class="rounded-lg border border-blue-400/30 bg-blue-500/10 px-3 py-1.5 text-xs font-semibold text-blue-200 transition hover:bg-blue-500/25"
+                    (click)="toggleDetalle(p.idPedido)"
+                  >
+                    {{ expandido() === p.idPedido ? 'Ocultar' : 'Detalles' }}
+                  </button>
+                  <button
+                    class="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-1.5 text-xs font-semibold text-rose-200 transition hover:bg-rose-500/25"
+                    (click)="eliminar(p.idPedido)"
+                  >Eliminar</button>
+                </div>
+              </td>
+            </tr>
+            @if (expandido() === p.idPedido && p.detalles?.length) {
+              <tr class="bg-nebula-900/60">
+                <td colspan="7" class="px-4 pb-4 text-xs">
+                  <p class="mb-2 font-semibold tracking-wide text-slate-400 uppercase">Detalle del pedido</p>
+                  <div class="flex flex-wrap gap-2">
+                    @for (d of p.detalles; track d.idProducto) {
+                      <span class="rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-slate-300">
+                        <span class="font-semibold text-violet-300">{{ d.cantidad }}×</span>
+                        {{ d.nombreProducto }}
+                        <span class="text-slate-500">· ${{ d.precioUnitario }} c/u</span>
+                        <span class="font-medium text-blue-300">= ${{ d.subtotal }}</span>
+                      </span>
+                    }
+                  </div>
+                </td>
+              </tr>
+            }
+          }
+        </tbody>
+      </table>
+    </div>
   }
 </section>
