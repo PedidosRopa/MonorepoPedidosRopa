@@ -17,16 +17,21 @@ jobs:
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
+            # 1. Clonar el repositorio si no existe en la EC2
             if [ ! -d "app" ]; then
-              git clone https://github.com/DebugggMax/PedidosRopa/MonorepoPedidosRopa. app
+              git clone https://github.com/DebugggMax/MonorepoPedidosRopa.git app
             fi
+
+            # 2. Entrar a la carpeta y asegurar la rama deploy
             cd app
+            git fetch origin
+            git checkout deploy
             git pull origin deploy
-            
-            # Navegar a la carpeta real del backend
+
+            # 3. Navegar a la carpeta del backend
             cd cloudnative
 
-            # 1. Crear / sobrescribir el archivo .env con las variables de GitHub Secrets
+            # 4. Crear / sobrescribir el archivo .env con los Secrets
             cat << EOF > .env
             SPRING_PROFILES_ACTIVE=prod
             AZURE_TENANT_ID=${{ secrets.AZURE_TENANT_ID }}
@@ -40,11 +45,9 @@ jobs:
             RABBITMQ_PASSWORD=guest
             EOF
 
-            # 2. Detener los servicios actuales
+            # 5. Reiniciar contenedores e iniciar en segundo plano
             docker compose down || docker-compose down
-
-            # 3. Reconstruir e iniciar los contenedores en segundo plano
             docker compose up -d --build || docker-compose up -d --build
 
-            # 4. Limpiar imágenes no utilizadas en la EC2
+            # 6. Limpieza de imágenes antiguas
             docker image prune -f
