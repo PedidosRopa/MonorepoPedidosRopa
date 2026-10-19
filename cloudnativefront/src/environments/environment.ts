@@ -9,9 +9,9 @@ export const environment = {
 
     tenantId: 'b71db8e1-9664-4416-9575-b24979352b34',
 
-    redirectUri: 'https://main.d3b5udaeum350v.amplifyapp.com',
+    redirectUri: 'https://deploy.d2oilif5re81zp.amplifyapp.com',
 
-    postLogoutRedirectUri: 'https://main.d3b5udaeum350v.amplifyapp.com/login',
+    postLogoutRedirectUri: 'https://deploy.d2oilif5re81zp.amplifyapp.com/login',
 
     loginScopes: ['openid', 'profile', 'email', 'api://f72177e7-8274-457f-8340-2c60ebb2becf/access_as_user'],
 
