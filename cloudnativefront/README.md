@@ -30,6 +30,25 @@ ng serve
 - Para que el login funcione en local, la app registration de Entra ID debe tener `http://localhost:4200` como redirect URI (SPA).
 - `ng build` (producción) usa `environment.ts`: apunta al API Gateway (`apiBaseUrl`) y a los redirect URIs desplegados en la nube, listo para desplegar sin cambios adicionales.
 
+## Despliegue con AWS Amplify
+
+La app es una **SPA estática** (build sin SSR); cada push a la rama `deploy` dispara el build en Amplify Hosting (conectado via OAuth al repo).
+
+### Conexión inicial (una vez, desde AWS Amplify Console)
+
+1. Amplify → **Deploy app → con tu código existente**.
+2. Autorizar GitHub (OAuth) y seleccionar el repo `PedidosRopa/MonorepoPedidosRopa`.
+3. Rama: **`deploy`**.
+4. App settings → monorepo/Build settings: **base directory `cloudnativefront`** (Amplify lee el `amplify.yml` de esa carpeta, incluida la versión de Node 22).
+5. Terminar y esperar el primer build → URL pública: `https://<app-id>.amplifyapp.com`.
+6. Rewrites para SPA (App settings → **Rewrites and redirects**), fuente `</^[^.]+$|\.(?!(css|js|json|ico|png|jpg|jpeg|gif|svg|webp|woff|woff2|ttf|map)$)([^.]+$)/>`, destino `/index.html`, tipo **200**: así las rutas de Angular (`/pedidos`, `/nuevo-pedido`…) no dan 404 al refrescar.
+
+### Después del primer despliegue
+
+1. Agregar en Entra ID (app registration SPA) los **redirect URIs**: `https://<dominio-amplify>` y `https://<dominio-amplify>/login`.
+2. Actualizar `redirectUri`/`postLogoutRedirectUri` en `src/environments/environment.ts` con ese dominio y hacer push a `deploy` (redespliegue automático).
+3. Agregar el origin de Amplify a la **configuración CORS del API Gateway**.
+
 ## Development server
 
 To start a local development server, run:
