@@ -7,7 +7,6 @@ import {
 import { isPlatformBrowser } from '@angular/common';
 import { provideRouter } from '@angular/router';
 import { provideHttpClient, withInterceptorsFromDi, HTTP_INTERCEPTORS } from '@angular/common/http';
-import { provideClientHydration } from '@angular/platform-browser';
 import {
   MSAL_INSTANCE,
   MSAL_GUARD_CONFIG,
@@ -39,7 +38,6 @@ export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes),
-    provideClientHydration(),
     provideHttpClient(withInterceptorsFromDi()),
 
     // --- MSAL: login Azure + Bearer JWT automático ---
