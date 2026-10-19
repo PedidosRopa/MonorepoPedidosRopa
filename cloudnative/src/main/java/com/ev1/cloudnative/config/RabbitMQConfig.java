@@ -13,6 +13,9 @@ import java.util.Map;
 @Configuration
 public class RabbitMQConfig {
 
+    // ==========================================
+    // PROPIEDADES PEDIDOS
+    // ==========================================
     @Value("${app.rabbitmq.exchanges.pedidos}")
     private String exchangeName;
 
@@ -31,19 +34,41 @@ public class RabbitMQConfig {
     @Value("${app.rabbitmq.routing-keys.pedido-dlq}")
     private String dlqRoutingKey;
 
-    // 1. Exchange Principal (Topic)
+    // ==========================================
+    // PROPIEDADES PRODUCTOS
+    // ==========================================
+    @Value("${app.rabbitmq.exchanges.productos:productos.exchange}")
+    private String productosExchangeName;
+
+    @Value("${app.rabbitmq.exchanges.productos-dlx:productos.dlx}")
+    private String productosDlxName;
+
+    @Value("${app.rabbitmq.queues.producto-procesamiento:productos.procesamiento.queue}")
+    private String productosQueueName;
+
+    @Value("${app.rabbitmq.queues.producto-procesamiento-dlq:productos.procesamiento.dlq}")
+    private String productosDlqName;
+
+    @Value("${app.rabbitmq.routing-keys.producto-creado:productos.routing.key}")
+    private String productosRoutingKey;
+
+    @Value("${app.rabbitmq.routing-keys.producto-dlq:productos.dlq.routing.key}")
+    private String productosDlqRoutingKey;
+
+    // ------------------------------------------
+    // CONFIGURACIÓN PEDIDOS
+    // ------------------------------------------
+
     @Bean
     public TopicExchange pedidosExchange() {
         return new TopicExchange(exchangeName);
     }
 
-    // 2. Dead Letter Exchange (DLX)
     @Bean
     public DirectExchange deadLetterExchange() {
         return new DirectExchange(dlxName);
     }
 
-    // 3. Cola Principal con configuración de DLX
     @Bean
     public Queue pedidoProcesamientoQueue() {
         Map<String, Object> args = new HashMap<>();
@@ -54,13 +79,11 @@ public class RabbitMQConfig {
                 .build();
     }
 
-    // 4. Dead Letter Queue (DLQ)
     @Bean
     public Queue pedidoProcesamientoDLQ() {
         return QueueBuilder.durable(dlqName).build();
     }
 
-    // 5. Bindings
     @Bean
     public Binding bindingPedidoProcesamiento() {
         return BindingBuilder
@@ -77,7 +100,55 @@ public class RabbitMQConfig {
                 .with(dlqRoutingKey);
     }
 
-    // Conversor a JSON para publicar y consumir objetos DTO en la cola
+    // ------------------------------------------
+    // CONFIGURACIÓN PRODUCTOS
+    // ------------------------------------------
+
+    @Bean
+    public DirectExchange productosExchange() {
+        return new DirectExchange(productosExchangeName);
+    }
+
+    @Bean
+    public DirectExchange productosDeadLetterExchange() {
+        return new DirectExchange(productosDlxName);
+    }
+
+    @Bean
+    public Queue productoProcesamientoQueue() {
+        Map<String, Object> args = new HashMap<>();
+        args.put("x-dead-letter-exchange", productosDlxName);
+        args.put("x-dead-letter-routing-key", productosDlqRoutingKey);
+        return QueueBuilder.durable(productosQueueName)
+                .withArguments(args)
+                .build();
+    }
+
+    @Bean
+    public Queue productoProcesamientoDLQ() {
+        return QueueBuilder.durable(productosDlqName).build();
+    }
+
+    @Bean
+    public Binding bindingProductoProcesamiento() {
+        return BindingBuilder
+                .bind(productoProcesamientoQueue())
+                .to(productosExchange())
+                .with(productosRoutingKey);
+    }
+
+    @Bean
+    public Binding bindingProductoDLQ() {
+        return BindingBuilder
+                .bind(productoProcesamientoDLQ())
+                .to(productosDeadLetterExchange())
+                .with(productosDlqRoutingKey);
+    }
+
+    // ------------------------------------------
+    // CONVERSOR JSON
+    // ------------------------------------------
+
     @Bean
     public MessageConverter jsonMessageConverter() {
         return new Jackson2JsonMessageConverter();
