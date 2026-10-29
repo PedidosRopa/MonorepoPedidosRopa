@@ -13,7 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 @Component
 @Slf4j
 public class ProductoDeadletterQueueListener {
-    @RabbitListener(queues = "${app.rabbitmq.queues.producto-procesamiento-dlq}")
+    //@RabbitListener(queues = "${app.rabbitmq.queues.producto-procesamiento-dlq}")
     public void procesarProductoFallido(
             ProductoDto event,
             Channel channel,

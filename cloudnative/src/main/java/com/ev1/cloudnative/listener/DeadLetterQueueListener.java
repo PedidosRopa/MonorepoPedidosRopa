@@ -14,7 +14,7 @@ import java.io.IOException;
 @Slf4j
 public class DeadLetterQueueListener {
 
-    @RabbitListener(queues = "${app.rabbitmq.queues.pedido-procesamiento-dlq}")
+    //@RabbitListener(queues = "${app.rabbitmq.queues.pedido-procesamiento-dlq}")
     public void procesarMensajeFallido(
             PedidoCreadoEvent event,
             Channel channel,
