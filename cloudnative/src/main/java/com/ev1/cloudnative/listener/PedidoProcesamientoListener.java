@@ -1,14 +1,16 @@
 package com.ev1.cloudnative.listener;
 
-import com.rabbitmq.client.Channel;
-import com.ev1.cloudnative.dtos.PedidoCreadoEvent;
-import lombok.extern.slf4j.Slf4j;
+import java.io.IOException;
+
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.support.AmqpHeaders;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.stereotype.Component;
 
-import java.io.IOException;
+import com.ev1.cloudnative.dtos.PedidoCreadoEvent;
+import com.rabbitmq.client.Channel;
+
+import lombok.extern.slf4j.Slf4j;
 
 @Component
 @Slf4j
@@ -24,8 +26,9 @@ public class PedidoProcesamientoListener {
             log.info("Mensaje recibido de RabbitMQ para el Pedido ID: {}", event.idPedido());
 
             // Simulación de validación / procesamiento en bodega
-            if (event.montoTotal() <= 0) {
-                throw new IllegalArgumentException("El monto del pedido es inválido. Enviando a DLQ.");
+                        // Validar nulo antes de comparar <= 0
+            if (event.montoTotal() == null || event.montoTotal() <= 0) {
+                throw new IllegalArgumentException("El monto del pedido es nulo o inválido. Enviando a DLQ.");
             }
 
             log.info("Pedido ID: {} procesado exitosamente por la bodega.", event.idPedido());
