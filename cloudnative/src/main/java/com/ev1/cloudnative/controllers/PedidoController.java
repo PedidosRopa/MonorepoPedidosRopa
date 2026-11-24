@@ -50,7 +50,8 @@ public class PedidoController {
             @Valid @RequestBody PedidoRequestDto requestDto,
             @AuthenticationPrincipal Jwt jwt) {
         String email = SecurityUtils.extractEmail(jwt);
-        return ResponseEntity.status(HttpStatus.CREATED).body(pedidoService.crearPedido(requestDto, email));
+        String oid = SecurityUtils.extractOid(jwt);
+        return ResponseEntity.status(HttpStatus.CREATED).body(pedidoService.crearPedido(requestDto, email, oid));
     }
 
     @PatchMapping("/{id}/estado")

@@ -19,7 +19,7 @@ public class HistorialPedido {
     private Long idPedido;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 30)
+    @Column(length = 30)
     private EstadoPedido estadoAnterior;
 
     @Enumerated(EnumType.STRING)

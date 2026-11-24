@@ -1,6 +1,7 @@
 package com.ev1.cloudnative.services;
 
 import com.ev1.cloudnative.dtos.*;
+import com.ev1.cloudnative.dtos.kafka.PedidoEstadoEvent;
 import com.ev1.cloudnative.exceptions.ResourceNotFoundException;
 import com.ev1.cloudnative.exceptions.StockInsuficienteException;
 import com.ev1.cloudnative.mappers.PedidoMapper;
@@ -11,14 +12,13 @@ import com.ev1.cloudnative.model.Producto;
 import com.ev1.cloudnative.repositories.HistorialPedidoRepository;
 import com.ev1.cloudnative.repositories.PedidoRepository;
 import com.ev1.cloudnative.repositories.ProductoRepository;
+import com.ev1.cloudnative.services.kafka.PedidoEstadoProducer;
 import lombok.RequiredArgsConstructor;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -31,7 +31,7 @@ public class PedidoService {
     private final HistorialPedidoRepository historialRepository;
     private final PedidoMapper pedidoMapper;
     private final RabbitTemplate rabbitTemplate;
-    private final KafkaTemplate<String, Object> kafkaTemplate;
+    private final PedidoEstadoProducer pedidoEstadoProducer;
     private final CarritoService carritoService;
 
     @Value("${app.rabbitmq.exchanges.pedidos}")
@@ -40,11 +40,8 @@ public class PedidoService {
     @Value("${app.rabbitmq.routing-keys.pedido-creado}")
     private String routingKey;
 
-    @Value("${app.kafka.topics.pedidos-estados}")
-    private String pedidosEstadosTopic;
-
     @Transactional
-    public PedidoResponseDto crearPedido(PedidoRequestDto requestDto, String usuarioEmail) {
+    public PedidoResponseDto crearPedido(PedidoRequestDto requestDto, String usuarioEmail, String entraOid) {
         double montoTotalCalculado = 0.0;
         List<DetallePedido> detalles = new ArrayList<>();
 
@@ -54,8 +51,8 @@ public class PedidoService {
 
             if (producto.getStock() < item.cantidad()) {
                 throw new StockInsuficienteException(
-                    String.format("Stock insuficiente para '%s'. Disponible: %d, Solicitado: %d",
-                        producto.getNombre(), producto.getStock(), item.cantidad())
+                        String.format("Stock insuficiente para '%s'. Disponible: %d, Solicitado: %d",
+                                producto.getNombre(), producto.getStock(), item.cantidad())
                 );
             }
 
@@ -97,19 +94,16 @@ public class PedidoService {
         );
         rabbitTemplate.convertAndSend(exchangeName, routingKey, rabbitEvent);
 
-        // 2. Publicar hito inicial en Kafka (Tracker de estados) con clave idPedido
-        PedidoEstadoEvent kafkaEvent = new PedidoEstadoEvent(
-                "1.0",
+        // 2. Publicar hito inicial en Kafka (Tracker de estados)
+        pedidoEstadoProducer.publicarCambioEstado(new PedidoEstadoEvent(
                 pedidoGuardado.getIdPedido(),
                 null,
-                EstadoPedido.PENDIENTE,
-                usuarioEmail,
-                LocalDateTime.now()
-        );
-        kafkaTemplate.send(pedidosEstadosTopic, pedidoGuardado.getIdPedido().toString(), kafkaEvent);
+                EstadoPedido.PENDIENTE.name(),
+                usuarioEmail
+        ));
 
-        // 3. Limpiar el carrito persistido del usuario tras concretar la compra
-        carritoService.vaciarCarrito(usuarioEmail);
+        // 3. Limpiar el carrito persistido del usuario usando su entraOid
+        carritoService.vaciarCarrito(entraOid);
 
         return pedidoMapper.toDto(pedidoGuardado);
     }
@@ -130,17 +124,13 @@ public class PedidoService {
         }
 
         // Publicar evento de cambio de estado a Kafka (particionado por idPedido)
-        PedidoEstadoEvent event = new PedidoEstadoEvent(
-                "1.0",
+        pedidoEstadoProducer.publicarCambioEstado(new PedidoEstadoEvent(
                 idPedido,
-                estadoAnterior,
-                nuevoEstado,
-                repartidorEmail,
-                LocalDateTime.now()
-        );
-        kafkaTemplate.send(pedidosEstadosTopic, idPedido.toString(), event);
+                estadoAnterior.name(),
+                nuevoEstado.name(),
+                repartidorEmail
+        ));
 
-        // Devolver DTO reflejando el estado emitido para respuesta inmediata en UI
         pedido.setEstado(nuevoEstado);
         return pedidoMapper.toDto(pedido);
     }
@@ -198,14 +188,11 @@ public class PedidoService {
         pedido.setEstado(EstadoPedido.CANCELADO);
         pedidoRepository.save(pedido);
 
-        PedidoEstadoEvent event = new PedidoEstadoEvent(
-                "1.0",
+        pedidoEstadoProducer.publicarCambioEstado(new PedidoEstadoEvent(
                 idPedido,
-                estadoAnterior,
-                EstadoPedido.CANCELADO,
-                usuarioEmail,
-                LocalDateTime.now()
-        );
-        kafkaTemplate.send(pedidosEstadosTopic, idPedido.toString(), event);
+                estadoAnterior.name(),
+                EstadoPedido.CANCELADO.name(),
+                usuarioEmail
+        ));
     }
 }
