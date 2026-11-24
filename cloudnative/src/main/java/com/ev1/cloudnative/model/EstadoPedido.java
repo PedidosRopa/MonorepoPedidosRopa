@@ -3,7 +3,10 @@ package com.ev1.cloudnative.model;
 public enum EstadoPedido {
     PENDIENTE,            // Creado por el usuario, stock reservado
     PENDIENTE_APROBACION, // Operación que requiere revisión manual
-    PROCESANDO,           // Enviado a bodega / cola de despacho
-    COMPLETADO,           // Entregado exitosamente
+    PROCESANDO,           // Confirmado en bodega
+    EN_PREPARACION,       // Repartidor / bodega preparando paquete
+    EN_CAMINO,            // Repartidor en ruta de entrega
+    ENTREGADO,            // Entregado al cliente
+    COMPLETADO,           // Cierre administrativo
     CANCELADO             // Anulado (devuelve stock)
 }
