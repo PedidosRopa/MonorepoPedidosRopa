@@ -20,7 +20,7 @@ import { RolUsuario } from '../core/models';
  * - logout(): cierra sesión
  * - El MsalInterceptor inyecta el Bearer JWT automáticamente,
  *   este servicio solo expone estado + helpers para la UI.
- * - userRole(): lee el claim 'roles' del token (idTokenClaims) y devuelve el rol principal.
+ * - userRole: lee el claim 'roles' del JWT (idTokenClaims o access token).
  */
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -37,19 +37,8 @@ export class AuthService {
     () => this.activeAccount()?.username ?? this.activeAccount()?.name ?? null
   );
 
-  /** Rol principal del usuario, extraído del claim 'roles' del JWT. */
-  readonly userRole = computed<RolUsuario | null>(() => {
-    const account = this.activeAccount();
-    const idTokenClaims = account?.idTokenClaims as IdTokenClaims | undefined;
-    const roles: string[] | undefined = idTokenClaims?.roles;
-    if (!roles || roles.length === 0) return null;
-    // Prioridad: ADMINISTRADOR > REPARTIDOR > CLIENTE
-    const orden: RolUsuario[] = ['ADMINISTRADOR', 'REPARTIDOR', 'CLIENTE'];
-    for (const rol of orden) {
-      if (roles.includes(rol)) return rol;
-    }
-    return null;
-  });
+  /** Rol principal del usuario. Se extrae del claim 'roles' del JWT. */
+  readonly userRole = signal<RolUsuario | null>(null);
 
   /** Verifica si el usuario tiene el rol dado. */
   hasRole(rol: RolUsuario): boolean {
@@ -63,6 +52,13 @@ export class AuthService {
     if (!actual) return false;
     return roles.includes(actual) || actual === 'ADMINISTRADOR';
   }
+
+  /** Orden de prioridad para determinar el rol principal cuando hay varios. */
+  private readonly ordenRoles: RolUsuario[] = [
+    'ADMINISTRADOR',
+    'REPARTIDOR',
+    'CLIENTE',
+  ];
 
   constructor() {
     if (!isPlatformBrowser(this.platformId)) {
@@ -78,7 +74,10 @@ export class AuthService {
         filter((msg: EventMessage) => msg.eventType === EventType.LOGIN_SUCCESS),
         takeUntil(this.destroy$)
       )
-      .subscribe((msg) => this.setActiveAccount((msg.payload as AuthenticationResult).account));
+      .subscribe((msg) => {
+        this.setActiveAccount((msg.payload as AuthenticationResult).account);
+        this.cargarRolesDesdeToken();
+      });
 
     this.broadcast.msalSubject$
       .pipe(
@@ -97,6 +96,7 @@ export class AuthService {
       next: (result) => {
         if (result?.account) {
           this.setActiveAccount(result.account);
+          this.cargarRolesDesdeToken();
         } else {
           this.syncActiveAccount();
         }
@@ -105,6 +105,56 @@ export class AuthService {
     });
 
     this.syncActiveAccount();
+    // Intenta cargar roles de forma síncrona si ya hay cuenta activa
+    this.cargarRolesDesdeToken();
+    // También intenta obtenerlos del access token (asíncrono)
+    this.cargarRolesDesdeAccessToken();
+  }
+
+  /**
+   * Lee los roles del idTokenClaims (síncrono, disponible inmediatamente tras el login).
+   */
+  private cargarRolesDesdeToken(): void {
+    const account = this.activeAccount();
+    if (!account) {
+      this.userRole.set(null);
+      return;
+    }
+    const idTokenClaims = account.idTokenClaims as IdTokenClaims | undefined;
+    const roles: string[] | undefined = idTokenClaims?.roles;
+    this.userRole.set(this.rolPrincipal(roles));
+  }
+
+  /**
+   * Intenta obtener los roles del access token (asíncrono).
+   * Útil cuando los roles no vienen en el id token pero sí en el access token de la API.
+   */
+  async cargarRolesDesdeAccessToken(): Promise<void> {
+    const account = this.msal.instance.getActiveAccount();
+    if (!account) return;
+    try {
+      const result = await this.msal.instance.acquireTokenSilent({
+        scopes: [...environment.azure.apiScopes],
+        account,
+      });
+      const token = result.accessToken;
+      const payload = token.split('.')[1];
+      if (!payload) return;
+      const claims = JSON.parse(atob(payload));
+      const roles: string[] | undefined = claims.roles;
+      this.userRole.set(this.rolPrincipal(roles));
+    } catch {
+      // Ignorar errores: el rol ya puede estar seteado desde idTokenClaims o quedarse null.
+    }
+  }
+
+  /** Determina el rol principal a partir de un array de roles de Entra ID. */
+  private rolPrincipal(roles: string[] | undefined): RolUsuario | null {
+    if (!roles || roles.length === 0) return null;
+    for (const rol of this.ordenRoles) {
+      if (roles.includes(rol)) return rol;
+    }
+    return null;
   }
 
   /** Inicia login con redirect a Azure. */
@@ -116,6 +166,7 @@ export class AuthService {
   /** Cierra sesión (redirect) y limpia la cuenta local. */
   logout(): void {
     if (!isPlatformBrowser(this.platformId)) return;
+    this.userRole.set(null);
     this.msal.logoutRedirect({
       postLogoutRedirectUri: environment.azure.postLogoutRedirectUri,
     });

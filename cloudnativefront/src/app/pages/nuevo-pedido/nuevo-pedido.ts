@@ -6,6 +6,19 @@ import { PedidoService } from '../../core/pedido.service';
 import { CarritoService } from '../../core/carrito.service';
 import { DetalleItem, PedidoRequest, Producto, CarritoItem } from '../../core/models';
 
+/** Lee los items del carrito pasados por query string (?carrito=...). */
+function leerItemsDesdeQuery(): CarritoItem[] {
+  if (typeof window === 'undefined') return [];
+  const params = new URLSearchParams(window.location.search);
+  const carritoJson = params.get('carrito');
+  if (!carritoJson) return [];
+  try {
+    return JSON.parse(carritoJson) as CarritoItem[];
+  } catch {
+    return [];
+  }
+}
+
 /**
  * Vista "Nuevo pedido": arma un pedido eligiendo productos y cantidades
  * y envía POST /api/pedidos con { descPedido, items } (PedidoRequestDto).
@@ -51,6 +64,17 @@ export class NuevoPedidoComponent implements OnInit {
   ngOnInit(): void {
     this.cargar();
     this.cargarCarrito();
+    // Si llegaron items por query string (desde el sidebar), cargarlos en cantidades
+    const itemsQuery = leerItemsDesdeQuery();
+    if (itemsQuery.length > 0) {
+      const map: Record<number, number> = {};
+      itemsQuery.forEach((i) => {
+        map[i.productoId] = i.cantidad;
+      });
+      this.cantidades.set(map);
+      this.mensaje.set(`Se cargaron ${itemsQuery.length} producto(s) desde tu carrito.`);
+      setTimeout(() => this.mensaje.set(null), 3000);
+    }
   }
 
   cargar(): void {

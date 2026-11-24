@@ -101,4 +101,22 @@ export class CarritoService {
         0
       )
   );
+
+  /** Visibilidad del sidebar del carrito (perpetuo en todas las páginas). */
+  readonly sidebarOpen = signal(false);
+
+  /** Alterna la visibilidad del sidebar. */
+  toggleSidebar(): void {
+    this.sidebarOpen.update((v) => !v);
+  }
+
+  /** Abre el sidebar. */
+  abrirSidebar(): void {
+    this.sidebarOpen.set(true);
+  }
+
+  /** Cierra el sidebar. */
+  cerrarSidebar(): void {
+    this.sidebarOpen.set(false);
+  }
 }

@@ -1,0 +1,70 @@
+<section class="py-10 max-w-3xl mx-auto">
+  <header class="mb-10">
+    <nav class="flex items-center gap-2 text-sm text-slate-400 mb-4">
+      <a routerLink="/landing" class="hover:text-violet-300 transition">Inicio</a>
+      <span class="text-slate-600">/</span>
+      <span class="text-white">Perfil</span>
+    </nav>
+    <h1 class="title-grad text-3xl font-bold md:text-4xl">Mi perfil</h1>
+    <p class="mt-2 text-slate-400">
+      Información de tu cuenta y rol detectado por el sistema.
+    </p>
+  </header>
+
+  <div class="glass rounded-2xl p-8">
+    <div class="flex flex-col sm:flex-row sm:items-center gap-6 mb-8">
+      <div class="w-16 h-16 rounded-full bg-gradient-to-br from-violet-500 to-blue-500 flex items-center justify-center text-white font-display text-2xl font-bold shrink-0">
+        {{ auth.username()?.charAt(0) || '?' }}{{ auth.username()?.charAt(1) || '?' }}
+      </div>
+      <div>
+        <h2 class="text-xl font-semibold text-white">{{ auth.username() }}</h2>
+        <p class="text-sm text-slate-400">
+          Cuenta de Microsoft Entra ID
+        </p>
+      </div>
+      <div class="ml-auto">
+        <button
+          class="btn-grad"
+          (click)="logout()"
+        >
+          Cerrar sesión
+        </button>
+      </div>
+    </div>
+
+    <div class="grid gap-4 sm:grid-cols-2">
+      <div class="rounded-xl border border-white/10 bg-white/5 p-6">
+        <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Rol detectado</p>
+        <p class="text-2xl font-display font-bold">
+          @if (auth.userRole()) {
+            <span [class]="getRolColor(auth.userRole()!)">{{ auth.userRole() }}</span>
+          } @else {
+            <span class="text-slate-500">Sin rol asignado</span>
+          }
+        </p>
+        <p class="mt-2 text-xs text-slate-500">
+          El rol se lee del claim 'roles' del JWT (id token o access token).
+        </p>
+      </div>
+
+      <div class="rounded-xl border border-white/10 bg-white/5 p-6">
+        <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Estado de sesión</p>
+        <p class="text-2xl font-display font-bold text-emerald-400">Autenticado</p>
+        <p class="mt-2 text-xs text-slate-500">
+          El token JWT se inyecta automáticamente en cada request al backend.
+        </p>
+      </div>
+
+      @if (accessTokenInfo) {
+        <div class="col-span-full rounded-xl border border-white/10 bg-white/5 p-6">
+          <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Detalles del token de acceso</p>
+          <div class="text-sm text-slate-300 font-mono">
+            <p>Email: {{ accessTokenInfo.email }}</p>
+            <p>Nombre: {{ accessTokenInfo.name }}</p>
+            <p>Roles: {{ accessTokenInfo.roles?.join(', ') || '—' }}</p>
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+</section>

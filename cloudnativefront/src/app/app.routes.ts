@@ -40,8 +40,8 @@ export const routes: Routes = [
     canActivate: [MsalGuard],
   },
   {
-    path: 'carrito',
-    loadComponent: () => import('./pages/cart-drawer/cart-drawer').then((m) => m.CartDrawerComponent),
+    path: 'perfil',
+    loadComponent: () => import('./pages/perfil/perfil').then((m) => m.PerfilComponent),
     canActivate: [MsalGuard],
   },
 

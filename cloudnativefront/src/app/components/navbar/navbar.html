@@ -11,12 +11,12 @@
       <a routerLink="/landing" routerLinkActive="link-active" class="nav-link">Inicio</a>
       <a routerLink="/productos" routerLinkActive="link-active" class="nav-link">Productos</a>
       @if (auth.isLoggedIn()) {
+        <a routerLink="/perfil" routerLinkActive="link-active" class="nav-link">Perfil</a>
         <a routerLink="/pedidos" routerLinkActive="link-active" class="nav-link">Mis pedidos</a>
         <a routerLink="/nuevo-pedido" routerLinkActive="link-active" class="nav-link">Nuevo pedido</a>
-        <a
-          routerLink="/carrito"
-          routerLinkActive="link-active"
-          class="nav-link relative"
+        <button
+          class="nav-link relative flex items-center gap-2"
+          (click)="toggleCarrito()"
         >
           Carrito
           @if (carrito.count() > 0) {
@@ -24,7 +24,7 @@
               {{ carrito.count() }}
             </span>
           }
-        </a>
+        </button>
         @if (auth.hasRole('REPARTIDOR')) {
           <a routerLink="/repartidor" routerLinkActive="link-active" class="nav-link">Repartidor</a>
         }
