@@ -1,5 +1,6 @@
 import { Injectable, inject, signal, computed, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
+import { Router } from '@angular/router';
 import { MsalService, MsalBroadcastService } from '@azure/msal-angular';
 import {
   AuthenticationResult,
@@ -26,6 +27,7 @@ import { RolUsuario } from '../core/models';
 export class AuthService {
   private readonly msal = inject(MsalService);
   private readonly broadcast = inject(MsalBroadcastService);
+  private readonly router = inject(Router);
   private readonly platformId = inject(PLATFORM_ID);
   private readonly destroy$ = new Subject<void>();
 
@@ -77,6 +79,8 @@ export class AuthService {
       .subscribe((msg) => {
         this.setActiveAccount((msg.payload as AuthenticationResult).account);
         this.cargarRolesDesdeToken();
+        // Después del login exitoso, redirigir a la página de perfil
+        this.router.navigate(['/perfil']);
       });
 
     this.broadcast.msalSubject$

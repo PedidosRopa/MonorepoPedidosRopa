@@ -18,10 +18,6 @@ export class NavbarComponent {
     this.auth.login();
   }
 
-  logout(): void {
-    this.auth.logout();
-  }
-
   toggleCarrito(): void {
     this.carrito.toggleSidebar();
   }

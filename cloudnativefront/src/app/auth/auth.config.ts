@@ -15,7 +15,6 @@ export const loginRequest = {
   scopes: [...environment.azure.loginScopes],
 };
 
-
 export function msalInstanceFactory(): IPublicClientApplication {
   return new PublicClientApplication({
     auth: {
@@ -42,7 +41,6 @@ export function msalInstanceFactory(): IPublicClientApplication {
   });
 }
 
-
 export function msalGuardConfigFactory(): MsalGuardConfiguration {
   return {
     interactionType: InteractionType.Redirect,
@@ -52,13 +50,18 @@ export function msalGuardConfigFactory(): MsalGuardConfiguration {
 
 export function msalInterceptorConfigFactory(): MsalInterceptorConfiguration {
   const protectedResourceMap = new Map<string, Array<string> | null>();
-  // Todas las llamadas a la API del backend llevan el access token del scope de la API.
-  protectedResourceMap.set(`${environment.apiBaseUrl}/api/*`, [...environment.azure.apiScopes]);
-  // Entrada adicional por si se usa URL relativa tras proxy (ej: "ng serve --proxy-config").
-  protectedResourceMap.set('/api/*', [...environment.azure.apiScopes]);
+  // Endpoints protegidos del backend requieren Bearer JWT.
+  // Los endpoints públicos (GET /api/productos) NO están en este mapa para evitar
+  // redirecciones automáticas a Microsoft cuando no hay sesión activa.
+  protectedResourceMap.set(`${environment.apiBaseUrl}/api/pedidos/*`, [...environment.azure.apiScopes]);
+  protectedResourceMap.set(`${environment.apiBaseUrl}/api/carrito/*`, [...environment.azure.apiScopes]);
+  protectedResourceMap.set(`${environment.apiBaseUrl}/api/admin/*`, [...environment.azure.apiScopes]);
+  protectedResourceMap.set('/api/pedidos/*', [...environment.azure.apiScopes]);
+  protectedResourceMap.set('/api/carrito/*', [...environment.azure.apiScopes]);
+  protectedResourceMap.set('/api/admin/*', [...environment.azure.apiScopes]);
 
   return {
-    interactionType: InteractionType.Redirect,
+    interactionType: InteractionType.Popup,
     protectedResourceMap,
   };
 }
