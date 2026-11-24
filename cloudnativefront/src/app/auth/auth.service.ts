@@ -7,10 +7,12 @@ import {
   EventType,
   InteractionStatus,
   AccountInfo,
+  IdTokenClaims,
 } from '@azure/msal-browser';
 import { filter, Subject, takeUntil } from 'rxjs';
 import { loginRequest } from './auth.config';
 import { environment } from '../../environments/environment';
+import { RolUsuario } from '../core/models';
 
 /**
  * Fachada de autenticación sobre MSAL.
@@ -18,6 +20,7 @@ import { environment } from '../../environments/environment';
  * - logout(): cierra sesión
  * - El MsalInterceptor inyecta el Bearer JWT automáticamente,
  *   este servicio solo expone estado + helpers para la UI.
+ * - userRole(): lee el claim 'roles' del token (idTokenClaims) y devuelve el rol principal.
  */
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -33,6 +36,33 @@ export class AuthService {
   readonly username = computed(
     () => this.activeAccount()?.username ?? this.activeAccount()?.name ?? null
   );
+
+  /** Rol principal del usuario, extraído del claim 'roles' del JWT. */
+  readonly userRole = computed<RolUsuario | null>(() => {
+    const account = this.activeAccount();
+    const idTokenClaims = account?.idTokenClaims as IdTokenClaims | undefined;
+    const roles: string[] | undefined = idTokenClaims?.roles;
+    if (!roles || roles.length === 0) return null;
+    // Prioridad: ADMINISTRADOR > REPARTIDOR > CLIENTE
+    const orden: RolUsuario[] = ['ADMINISTRADOR', 'REPARTIDOR', 'CLIENTE'];
+    for (const rol of orden) {
+      if (roles.includes(rol)) return rol;
+    }
+    return null;
+  });
+
+  /** Verifica si el usuario tiene el rol dado. */
+  hasRole(rol: RolUsuario): boolean {
+    const actual = this.userRole();
+    return actual === rol || actual === 'ADMINISTRADOR';
+  }
+
+  /** Verifica si el usuario tiene al menos uno de los roles dados. */
+  hasAnyRole(...roles: RolUsuario[]): boolean {
+    const actual = this.userRole();
+    if (!actual) return false;
+    return roles.includes(actual) || actual === 'ADMINISTRADOR';
+  }
 
   constructor() {
     if (!isPlatformBrowser(this.platformId)) {

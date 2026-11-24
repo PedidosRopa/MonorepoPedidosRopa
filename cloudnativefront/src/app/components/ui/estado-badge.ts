@@ -8,7 +8,10 @@ const ESTADO_STYLES: Record<string, string> = {
   PENDIENTE: 'border-amber-400/30 bg-amber-500/10 text-amber-200',
   PENDIENTE_APROBACION: 'border-yellow-400/30 bg-yellow-500/10 text-yellow-200',
   PROCESANDO: 'border-blue-400/30 bg-blue-500/10 text-blue-200',
-  COMPLETADO: 'border-emerald-400/30 bg-emerald-500/10 text-emerald-200',
+  EN_PREPARACION: 'border-orange-400/30 bg-orange-500/10 text-orange-200',
+  EN_CAMINO: 'border-indigo-400/30 bg-indigo-500/10 text-indigo-200',
+  ENTREGADO: 'border-emerald-400/30 bg-emerald-500/10 text-emerald-200',
+  COMPLETADO: 'border-violet-400/30 bg-violet-500/10 text-violet-200',
   CANCELADO: 'border-rose-400/30 bg-rose-500/10 text-rose-200',
 };
 

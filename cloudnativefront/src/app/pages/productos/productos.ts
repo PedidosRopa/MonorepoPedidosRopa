@@ -26,6 +26,7 @@ export class ProductosComponent implements OnInit {
   protected categoria = '';
   protected talla = '';
   protected genero = '';
+  protected imagenUrl = '';
   protected filtroCategoria = '';
   protected filtroTalla = '';
 
@@ -42,15 +43,15 @@ export class ProductosComponent implements OnInit {
         talla: this.filtroTalla || undefined,
       })
       .subscribe({
-      next: (data) => {
-        this.productos.set(data);
-        this.loading.set(false);
-      },
-      error: (err) => {
-        this.error.set(`No se pudieron cargar los productos: ${err?.message ?? err?.status ?? 'error'}`);
-        this.loading.set(false);
-      },
-    });
+        next: (data) => {
+          this.productos.set(data);
+          this.loading.set(false);
+        },
+        error: (err) => {
+          this.error.set(`No se pudieron cargar los productos: ${err?.message ?? err?.status ?? 'error'}`);
+          this.loading.set(false);
+        },
+      });
   }
 
   crear(): void {
@@ -68,6 +69,7 @@ export class ProductosComponent implements OnInit {
         categoria: this.categoria,
         talla: this.talla,
         genero: this.genero || undefined,
+        imagenUrl: this.imagenUrl || undefined,
       })
       .subscribe({
         next: (nuevo) => {
@@ -79,6 +81,7 @@ export class ProductosComponent implements OnInit {
           this.categoria = '';
           this.talla = '';
           this.genero = '';
+          this.imagenUrl = '';
         },
         error: (err) => {
           if (err?.status === 401 || err?.status === 403) {

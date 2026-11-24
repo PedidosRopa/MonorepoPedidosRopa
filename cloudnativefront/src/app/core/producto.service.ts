@@ -30,6 +30,13 @@ export class ProductoService {
     return this.http.post<Producto>(this.base, producto);
   }
 
+  /** POST /api/productos/{id}/imagen (multipart). Solo Administrador. */
+  subirImagen(id: number, file: File): Observable<Producto> {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.http.post<Producto>(`${this.base}/${id}/imagen`, formData);
+  }
+
   eliminar(id: number): Observable<void> {
     return this.http.delete<void>(`${this.base}/${id}`);
   }
