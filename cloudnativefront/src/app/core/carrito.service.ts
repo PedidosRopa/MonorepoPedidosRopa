@@ -172,7 +172,8 @@ export class CarritoService {
         if (
           cantidad !== item.cantidad ||
           producto.precio !== item.precio ||
-          producto.nombre !== item.nombre
+          producto.nombre !== item.nombre ||
+          producto.imagenUrl !== item.imagenUrl
         ) {
           cambio = true;
           return [

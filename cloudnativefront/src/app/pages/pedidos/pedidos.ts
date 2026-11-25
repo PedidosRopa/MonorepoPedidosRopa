@@ -22,10 +22,11 @@ import {
   siguientesEstados,
 } from '../../core/pedido-estado';
 
+import { Icon } from '../../components/ui/icon';
 @Component({
   selector: 'app-pedidos',
   standalone: true,
-  imports: [RouterLink, EstadoBadge],
+  imports: [RouterLink, EstadoBadge, Icon],
   templateUrl: './pedidos.html',
   styleUrl: './pedidos.css',
   changeDetection: ChangeDetectionStrategy.OnPush,

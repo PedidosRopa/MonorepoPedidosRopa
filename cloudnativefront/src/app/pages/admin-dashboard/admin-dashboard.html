@@ -36,33 +36,33 @@
   <!-- Accesos -->
   <h2 class="mb-3 font-display text-lg font-semibold text-white">Todas las pantallas</h2>
   <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-    <a routerLink="/pedidos" class="glass p-4 transition hover:border-violet-400/40">
-      <p class="mb-1 text-xl" aria-hidden="true">📦</p>
+    <a routerLink="/pedidos" class="group glass p-4 transition hover:-translate-y-0.5 hover:border-violet-400/40">
+      <span class="mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-marca-500/15 text-orquidea-300 transition group-hover:bg-marca-500 group-hover:text-white"><app-icon nombre="caja" [tamano]="20" /></span>
       <h3 class="font-semibold text-white">Pedidos</h3>
       <p class="text-xs text-slate-400">Todos los pedidos, detalles, estados y tracker.</p>
     </a>
-    <a routerLink="/repartidor" class="glass p-4 transition hover:border-blue-400/40">
-      <p class="mb-1 text-xl" aria-hidden="true">🚚</p>
+    <a routerLink="/repartidor" class="group glass p-4 transition hover:-translate-y-0.5 hover:border-blue-400/40">
+      <span class="mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-marca-500/15 text-orquidea-300 transition group-hover:bg-marca-500 group-hover:text-white"><app-icon nombre="camion" [tamano]="20" /></span>
       <h3 class="font-semibold text-white">Panel repartidor</h3>
       <p class="text-xs text-slate-400">Flujo logístico y cambios de estado.</p>
     </a>
-    <a routerLink="/nuevo-pedido" class="glass p-4 transition hover:border-emerald-400/40">
-      <p class="mb-1 text-xl" aria-hidden="true">🛍️</p>
+    <a routerLink="/nuevo-pedido" class="group glass p-4 transition hover:-translate-y-0.5 hover:border-emerald-400/40">
+      <span class="mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-marca-500/15 text-orquidea-300 transition group-hover:bg-marca-500 group-hover:text-white"><app-icon nombre="bolsa" [tamano]="20" /></span>
       <h3 class="font-semibold text-white">Nuevo pedido</h3>
       <p class="text-xs text-slate-400">Crear un pedido de prueba desde el catálogo.</p>
     </a>
-    <a routerLink="/productos" class="glass p-4 transition hover:border-amber-400/40">
-      <p class="mb-1 text-xl" aria-hidden="true">👕</p>
+    <a routerLink="/productos" class="group glass p-4 transition hover:-translate-y-0.5 hover:border-amber-400/40">
+      <span class="mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-marca-500/15 text-orquidea-300 transition group-hover:bg-marca-500 group-hover:text-white"><app-icon nombre="polera" [tamano]="20" /></span>
       <h3 class="font-semibold text-white">Productos</h3>
       <p class="text-xs text-slate-400">Catálogo, creación y eliminación de prendas.</p>
     </a>
-    <a routerLink="/admin-rabbit" class="glass p-4 transition hover:border-purple-400/40">
-      <p class="mb-1 text-xl" aria-hidden="true">🐰</p>
+    <a routerLink="/admin-rabbit" class="group glass p-4 transition hover:-translate-y-0.5 hover:border-purple-400/40">
+      <span class="mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-marca-500/15 text-orquidea-300 transition group-hover:bg-marca-500 group-hover:text-white"><app-icon nombre="cola" [tamano]="20" /></span>
       <h3 class="font-semibold text-white">RabbitMQ</h3>
       <p class="text-xs text-slate-400">Colas, exchanges y bindings.</p>
     </a>
-    <a routerLink="/admin-kafka" class="glass p-4 transition hover:border-indigo-400/40">
-      <p class="mb-1 text-xl" aria-hidden="true">📨</p>
+    <a routerLink="/admin-kafka" class="group glass p-4 transition hover:-translate-y-0.5 hover:border-indigo-400/40">
+      <span class="mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-marca-500/15 text-orquidea-300 transition group-hover:bg-marca-500 group-hover:text-white"><app-icon nombre="flujo" [tamano]="20" /></span>
       <h3 class="font-semibold text-white">Kafka</h3>
       <p class="text-xs text-slate-400">Topics, configuración y consumer groups.</p>
     </a>
@@ -70,10 +70,10 @@
 
   <div class="mt-5 grid gap-3 sm:grid-cols-2">
     <a routerLink="/perfil" class="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-slate-300 transition hover:bg-white/[0.06]">
-      Mi perfil y rol →
+      <span class="flex items-center justify-between">Mi perfil y rol <app-icon nombre="flecha" [tamano]="14" /></span>
     </a>
     <a routerLink="/landing" class="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-slate-300 transition hover:bg-white/[0.06]">
-      Ir al landing público →
+      <span class="flex items-center justify-between">Ir al landing público <app-icon nombre="flecha" [tamano]="14" /></span>
     </a>
   </div>
 </section>

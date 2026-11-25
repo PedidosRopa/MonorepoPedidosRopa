@@ -1,1 +1,14 @@
-/* El estilo global vive en src/styles.css (Tailwind v4). */
+/* Cinta infinita: dos copias idénticas; la pista se desplaza -50%. */
+.marquesina {
+  overflow: hidden;
+  mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+}
+
+.marquesina-pista {
+  display: flex;
+  width: max-content;
+}
+
+.marquesina:hover .marquesina-pista {
+  animation-play-state: paused;
+}

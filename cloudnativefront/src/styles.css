@@ -1,41 +1,104 @@
 /* ============================================================
    PedidosRopa — estilos globales (Tailwind CSS v4)
-   Versión aligerada: sin blur, sin animaciones de fondo y sin
-   fuentes externas para priorizar velocidad en instancias EC2.
+   - Paleta tomada del logo (#5e17eb, #d269e6, #ffa5f0).
+   - Fuentes auto-hospedadas (Fredoka + Nunito, variables, solo
+     se descarga el subset latino que se usa).
+   - Animaciones solo con transform/opacity (baratas para la GPU)
+     y desactivadas con prefers-reduced-motion.
    ============================================================ */
 @import "tailwindcss";
+@import "@fontsource-variable/fredoka/wght.css";
+@import "@fontsource-variable/nunito/wght.css";
 
 @theme {
-  --font-display: ui-sans-serif, system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  --font-sans: ui-sans-serif, system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-display: "Fredoka Variable", ui-rounded, ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Nunito Variable", ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif;
 
-  /* Fondo nebulosa profunda (morado oscuro → índigo) */
-  --color-nebula-950: #0b0716;
-  --color-nebula-900: #17102b;
-  --color-nebula-800: #21184a;
-  --color-nebula-700: #2b2054;
+  /* Colores del logo */
+  --color-marca-500: #5e17eb;
+  --color-marca-400: #7c3cff;
+  --color-marca-300: #a77bff;
+  --color-orquidea-500: #d269e6;
+  --color-orquidea-300: #e7a4f2;
+  --color-chicle-300: #ffa5f0;
+
+  /* Fondo: negro violáceo, como el fondo original del logo */
+  --color-nebula-950: #09060f;
+  --color-nebula-900: #120c1f;
+  --color-nebula-800: #1c1430;
+  --color-nebula-700: #2a1e47;
+
+  --animate-entrar: entrar 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-flotar: flotar 6s ease-in-out infinite;
+  --animate-marquesina: marquesina 32s linear infinite;
+  --animate-pop: pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+
+}
+
+/* Keyframes globales (también usados desde CSS de componentes). */
+@keyframes entrar {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes flotar {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-1.5deg);
+  }
+  50% {
+    transform: translateY(-10px) rotate(1.5deg);
+  }
+}
+
+@keyframes marquesina {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes pop {
+  0% {
+    transform: scale(0.6);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 @layer base {
   html {
     color-scheme: dark;
+    scroll-behavior: smooth;
   }
 
   body {
     @apply bg-nebula-950 font-sans text-slate-100 antialiased;
-    /* Un único gradiente estático: se pinta una vez y no repinta al hacer scroll. */
+    /* Gradiente estático: se pinta una vez y no repinta al hacer scroll. */
     background-image:
-      radial-gradient(circle at 15% 0%, rgb(124 58 237 / 0.16), transparent 45%),
-      radial-gradient(circle at 85% 10%, rgb(37 99 235 / 0.12), transparent 40%);
+      radial-gradient(60rem 30rem at 10% -10%, rgb(94 23 235 / 0.22), transparent 60%),
+      radial-gradient(40rem 24rem at 95% 0%, rgb(210 105 230 / 0.14), transparent 60%);
     background-repeat: no-repeat;
   }
 
+  h1,
+  h2,
+  h3 {
+    @apply font-display tracking-tight;
+  }
+
   ::selection {
-    @apply bg-violet-500/40;
+    @apply bg-orquidea-500/40 text-white;
   }
 
   :focus-visible {
-    @apply outline-2 outline-offset-2 outline-violet-400;
+    @apply outline-2 outline-offset-2 outline-orquidea-300;
   }
 
   img {
@@ -44,25 +107,36 @@
 }
 
 @layer components {
-  /* Panel de vidrio sin backdrop-filter (mucho más barato de renderizar). */
   .glass {
-    @apply rounded-2xl border border-white/10 bg-white/5;
+    @apply rounded-2xl border border-white/10 bg-white/[0.04];
   }
 
   .glass-hover {
-    @apply transition-colors hover:border-violet-400/40;
+    @apply transition-colors hover:border-orquidea-500/40;
   }
 
+  /* Botón principal: degradado del logo con brillo que cruza al pasar el mouse. */
   .btn-grad {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 font-semibold text-white transition-colors
-      bg-linear-to-r from-violet-600 via-indigo-600 to-blue-600
-      hover:brightness-110 disabled:pointer-events-none disabled:opacity-50;
+    @apply relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-xl px-5 py-2.5 font-display font-semibold
+      text-white shadow-lg shadow-marca-500/25 transition-[transform,box-shadow,filter] duration-200
+      bg-linear-to-r from-marca-500 via-marca-400 to-orquidea-500
+      hover:-translate-y-0.5 hover:shadow-orquidea-500/30 hover:brightness-110 active:translate-y-0
+      disabled:pointer-events-none disabled:opacity-50;
+  }
+
+  .btn-grad::after {
+    content: "";
+    @apply pointer-events-none absolute inset-y-0 -left-1/2 w-1/3 -skew-x-12 bg-white/25 opacity-0 transition-all duration-500;
+  }
+
+  .btn-grad:hover::after {
+    @apply left-[120%] opacity-100;
   }
 
   .btn-ghost {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-violet-400/30 bg-violet-500/10
-      px-5 py-2.5 font-semibold text-violet-200 transition-colors hover:border-violet-300/50 hover:bg-violet-500/20
-      disabled:pointer-events-none disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-orquidea-500/30 bg-marca-500/10
+      px-5 py-2.5 font-display font-semibold text-orquidea-300 transition-colors hover:border-orquidea-300/60 hover:bg-marca-500/20
+      hover:text-white disabled:pointer-events-none disabled:opacity-50;
   }
 
   .btn-danger {
@@ -73,15 +147,15 @@
 
   .input-neon {
     @apply w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-slate-100 transition
-      placeholder:text-slate-500 focus:border-violet-400/60 focus:outline-none focus:ring-2 focus:ring-violet-500/30;
+      placeholder:text-slate-500 focus:border-orquidea-500/60 focus:outline-none focus:ring-2 focus:ring-marca-500/30;
   }
 
   .title-grad {
-    @apply bg-linear-to-r from-violet-400 via-indigo-400 to-blue-400 bg-clip-text font-display text-transparent;
+    @apply bg-linear-to-r from-marca-300 via-orquidea-300 to-chicle-300 bg-clip-text font-display text-transparent;
   }
 
   .nav-link {
-    @apply relative rounded-lg px-3 py-1.5 text-sm font-medium text-slate-400 transition-colors hover:bg-white/5 hover:text-white;
+    @apply relative rounded-lg px-3 py-1.5 text-sm font-semibold text-slate-400 transition-colors hover:bg-white/5 hover:text-white;
   }
 
   .nav-link.link-active {
@@ -90,13 +164,65 @@
 
   .nav-link.link-active::after {
     content: "";
-    @apply absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-linear-to-r from-violet-500 to-blue-500;
+    @apply absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-linear-to-r from-marca-400 to-chicle-300;
+  }
+
+  /* Tarjeta de producto: elevación y zoom de imagen al pasar el mouse. */
+  .card-producto {
+    @apply flex flex-col rounded-2xl border border-white/10 bg-white/[0.04] transition-[transform,border-color,box-shadow] duration-300
+      hover:-translate-y-1 hover:border-orquidea-500/40 hover:shadow-xl hover:shadow-marca-500/15;
+  }
+
+  .card-producto .card-media img {
+    @apply transition-transform duration-500;
+  }
+
+  .card-producto:hover .card-media img {
+    @apply scale-105;
+  }
+
+  /* Relleno de la foto cuando el producto no tiene imagen (o falla al cargar). */
+  .media-vacia {
+    @apply flex h-full w-full flex-col items-center justify-center gap-2 text-orquidea-300/60;
+    background:
+      radial-gradient(circle at 30% 20%, rgb(210 105 230 / 0.18), transparent 55%),
+      radial-gradient(circle at 80% 90%, rgb(94 23 235 / 0.25), transparent 55%),
+      repeating-linear-gradient(135deg, rgb(255 255 255 / 0.025) 0 10px, transparent 10px 20px);
+  }
+
+  .chip {
+    @apply rounded-full border border-orquidea-500/30 bg-marca-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-orquidea-300;
   }
 }
 
-/* Fondo del hero, estático y sin capas animadas. */
+/* Fondo del hero, estático. */
 .hero-surface {
   background-image:
-    radial-gradient(ellipse at 50% 0%, rgb(124 58 237 / 0.22), transparent 60%),
-    linear-gradient(160deg, #17102b 0%, #0b0716 60%);
+    radial-gradient(ellipse 70% 60% at 70% 40%, rgb(94 23 235 / 0.28), transparent 70%),
+    radial-gradient(ellipse 50% 50% at 85% 70%, rgb(210 105 230 / 0.18), transparent 70%);
+}
+
+/* Entrada suave de cada página al navegar (el router inserta la vista junto al outlet). */
+.route-host > :not(router-outlet) {
+  animation: entrar 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Revelado al hacer scroll sin JavaScript (solo navegadores que lo soportan). */
+@supports (animation-timeline: view()) {
+  .revelar {
+    animation: entrar linear both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 35%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

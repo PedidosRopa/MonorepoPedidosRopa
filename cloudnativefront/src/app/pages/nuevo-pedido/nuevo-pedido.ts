@@ -15,10 +15,11 @@ import { CarritoService } from '../../core/carrito.service';
 import { Producto, Pedido, EstadoPedido } from '../../core/models';
 import { formatearMoneda } from '../../core/formato';
 
+import { Icon } from '../../components/ui/icon';
 @Component({
   selector: 'app-nuevo-pedido',
   standalone: true,
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, Icon],
   templateUrl: './nuevo-pedido.html',
   styleUrl: './nuevo-pedido.css',
   changeDetection: ChangeDetectionStrategy.OnPush,

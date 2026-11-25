@@ -1,1 +1,47 @@
-/* El estilo global vive en src/styles.css (Tailwind v4). */
+/*
+ * El logo completo es un emblema vertical; en la barra se muestra solo la
+ * zona "PEDIDOS ROPA" recortando el mismo SVG (un único archivo en caché).
+ * Coordenadas en unidades del viewBox de logo.svg (325 175 820 1165):
+ * texto entre x 335–1122 e y 605–908.
+ */
+.logo-wordmark {
+  --h: 2.4rem;
+  position: relative;
+  display: block;
+  height: var(--h);
+  width: calc(var(--h) * 787 / 303);
+  overflow: hidden;
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.logo-wordmark img {
+  position: absolute;
+  max-width: none;
+  width: auto;
+  height: calc(var(--h) * 1165 / 303);
+  top: calc(var(--h) * -430 / 303);
+  left: calc(var(--h) * -10 / 303);
+}
+
+.logo-link:hover .logo-wordmark {
+  transform: rotate(-2deg) scale(1.04);
+}
+
+@media (min-width: 640px) {
+  .logo-wordmark {
+    --h: 2.75rem;
+  }
+}
+
+.badge-carrito {
+  display: inline-flex;
+  min-width: 1.25rem;
+  justify-content: center;
+  border-radius: 9999px;
+  background: linear-gradient(135deg, #d269e6, #ffa5f0);
+  padding: 0.05rem 0.4rem;
+  font-size: 11px;
+  font-weight: 800;
+  color: #1a0b2e;
+  animation: pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}

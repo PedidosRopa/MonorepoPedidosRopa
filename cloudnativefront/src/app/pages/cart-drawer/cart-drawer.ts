@@ -8,10 +8,12 @@ import { formatearMoneda } from '../../core/formato';
  * Vista completa del carrito (/carrito). El sidebar global sigue siendo la
  * forma principal de usarlo; esta página sirve como respaldo en móvil.
  */
+import { Icon } from '../../components/ui/icon';
+import { ProductoMedia } from '../../components/ui/producto-media';
 @Component({
   selector: 'app-cart-drawer',
   standalone: true,
-  imports: [RouterLink],
+  imports: [RouterLink, Icon, ProductoMedia],
   templateUrl: './cart-drawer.html',
   styleUrl: './cart-drawer.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
