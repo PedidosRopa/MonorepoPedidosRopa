@@ -16,7 +16,6 @@ public class SecurityUtils {
         }
         return jwt.getSubject();
     }
-
     public static String extractOid(Jwt jwt) {
         String oid = jwt.getClaim("oid");
         return oid != null ? oid : jwt.getSubject();
