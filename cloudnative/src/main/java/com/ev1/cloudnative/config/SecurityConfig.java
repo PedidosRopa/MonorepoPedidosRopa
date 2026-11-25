@@ -42,16 +42,30 @@ public class SecurityConfig {
         return http.build();
     }
 
-    @Bean
-    public JwtAuthenticationConverter jwtAuthenticationConverter() {
-        JwtGrantedAuthoritiesConverter authoritiesConverter = new JwtGrantedAuthoritiesConverter();
-        authoritiesConverter.setAuthoritiesClaimName("roles");
-        authoritiesConverter.setAuthorityPrefix("ROLE_");
-
-        JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
-        converter.setJwtGrantedAuthoritiesConverter(authoritiesConverter);
-        return converter;
-    }
+@Bean
+public JwtAuthenticationConverter jwtAuthenticationConverter() {
+    JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
+    converter.setJwtGrantedAuthoritiesConverter(jwt -> {
+        List<String> roles = jwt.getClaimAsStringList("roles");
+        if (roles == null) {
+            return List.of();
+        }
+        return roles.stream()
+                .map(role -> {
+                    String upper = role.trim().toUpperCase();
+                    String normalized = switch (upper) {
+                        case "ADMIN", "ADMINISTRADOR" -> "Administrador";
+                        case "REPARTIDOR" -> "Repartidor";
+                        case "CLIENTE" -> "Cliente";
+                        default -> Character.toUpperCase(upper.charAt(0)) + upper.substring(1).toLowerCase();
+                    };
+                    return (org.springframework.security.core.GrantedAuthority)
+                            new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_" + normalized);
+                })
+                .toList();
+    });
+    return converter;
+}
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {

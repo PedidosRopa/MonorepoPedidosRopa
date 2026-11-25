@@ -49,19 +49,28 @@ export function msalGuardConfigFactory(): MsalGuardConfiguration {
 }
 
 export function msalInterceptorConfigFactory(): MsalInterceptorConfiguration {
-  const protectedResourceMap = new Map<string, Array<string> | null>();
-  // Endpoints protegidos del backend requieren Bearer JWT.
-  // Los endpoints públicos (GET /api/productos) NO están en este mapa para evitar
-  // redirecciones automáticas a Microsoft cuando no hay sesión activa.
-  protectedResourceMap.set(`${environment.apiBaseUrl}/api/pedidos/*`, [...environment.azure.apiScopes]);
-  protectedResourceMap.set(`${environment.apiBaseUrl}/api/carrito/*`, [...environment.azure.apiScopes]);
-  protectedResourceMap.set(`${environment.apiBaseUrl}/api/admin/*`, [...environment.azure.apiScopes]);
-  protectedResourceMap.set('/api/pedidos/*', [...environment.azure.apiScopes]);
-  protectedResourceMap.set('/api/carrito/*', [...environment.azure.apiScopes]);
-  protectedResourceMap.set('/api/admin/*', [...environment.azure.apiScopes]);
+  const protectedResourceMap = new Map<string, Array<string | { httpMethod: string; scopes: string[] }> | null>();
+  const apiScopes = [...environment.azure.apiScopes];
+
+  // Rutas protegidas completas (con y sin /* para cubrir rutas raíz como GET /api/pedidos)
+  protectedResourceMap.set(`${environment.apiBaseUrl}/api/pedidos`, apiScopes);
+  protectedResourceMap.set(`${environment.apiBaseUrl}/api/pedidos/*`, apiScopes);
+  protectedResourceMap.set(`${environment.apiBaseUrl}/api/carrito`, apiScopes);
+  protectedResourceMap.set(`${environment.apiBaseUrl}/api/carrito/*`, apiScopes);
+  protectedResourceMap.set(`${environment.apiBaseUrl}/api/admin`, apiScopes);
+  protectedResourceMap.set(`${environment.apiBaseUrl}/api/admin/*`, apiScopes);
+
+  // En /api/productos solo adjuntar JWT en escritura/borrado (GET sigue público)
+  const metodosEscritura = ['POST', 'PUT', 'PATCH', 'DELETE'].map((httpMethod) => ({
+    httpMethod,
+    scopes: apiScopes,
+  }));
+  protectedResourceMap.set(`${environment.apiBaseUrl}/api/productos`, metodosEscritura);
+  protectedResourceMap.set(`${environment.apiBaseUrl}/api/productos/*`, metodosEscritura);
 
   return {
     interactionType: InteractionType.Popup,
     protectedResourceMap,
   };
+
 }

@@ -118,7 +118,7 @@ export class AuthService {
   /**
    * Lee los roles del idTokenClaims (síncrono, disponible inmediatamente tras el login).
    */
-  private cargarRolesDesdeToken(): void {
+private cargarRolesDesdeToken(): void {
     const account = this.activeAccount();
     if (!account) {
       this.userRole.set(null);
@@ -126,37 +126,48 @@ export class AuthService {
     }
     const idTokenClaims = account.idTokenClaims as IdTokenClaims | undefined;
     const roles: string[] | undefined = idTokenClaims?.roles;
-    this.userRole.set(this.rolPrincipal(roles));
+    const rolIdToken = this.rolPrincipal(roles);
+
+    if (rolIdToken) {
+      this.userRole.set(rolIdToken);
+    } else {
+      // Si el ID Token no trae 'roles' (porque los App Roles están en la API backend),
+      // los extraemos inmediatamente del Access Token.
+      this.cargarRolesDesdeAccessToken();
+    }
   }
 
-  /**
-   * Intenta obtener los roles del access token (asíncrono).
-   * Útil cuando los roles no vienen en el id token pero sí en el access token de la API.
-   */
   async cargarRolesDesdeAccessToken(): Promise<void> {
-    const account = this.msal.instance.getActiveAccount();
+    const account = this.activeAccount() ?? this.msal.instance.getActiveAccount();
     if (!account) return;
     try {
       const result = await this.msal.instance.acquireTokenSilent({
         scopes: [...environment.azure.apiScopes],
         account,
       });
-      const token = result.accessToken;
-      const payload = token.split('.')[1];
+      const payload = result.accessToken.split('.')[1];
       if (!payload) return;
-      const claims = JSON.parse(atob(payload));
-      const roles: string[] | undefined = claims.roles;
-      this.userRole.set(this.rolPrincipal(roles));
+      // Base64URL safe decode
+      const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+      const claims = JSON.parse(atob(base64));
+      this.userRole.set(this.rolPrincipal(claims.roles));
     } catch {
-      // Ignorar errores: el rol ya puede estar seteado desde idTokenClaims o quedarse null.
+      // Ignorar errores silenciosos
     }
   }
 
-  /** Determina el rol principal a partir de un array de roles de Entra ID. */
   private rolPrincipal(roles: string[] | undefined): RolUsuario | null {
     if (!roles || roles.length === 0) return null;
+
+    const normalizados: RolUsuario[] = roles.map((r) => {
+      const upper = r.trim().toUpperCase();
+      if (upper === 'ADMIN' || upper === 'ADMINISTRADOR') return 'ADMINISTRADOR';
+      if (upper === 'REPARTIDOR') return 'REPARTIDOR';
+      return 'CLIENTE';
+    });
+
     for (const rol of this.ordenRoles) {
-      if (roles.includes(rol)) return rol;
+      if (normalizados.includes(rol)) return rol;
     }
     return null;
   }

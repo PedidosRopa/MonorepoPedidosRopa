@@ -28,12 +28,16 @@ public class SecurityUtils {
     }
 
     public static String extractRolPrincipal(Jwt jwt) {
-        List<String> roles = jwt.getClaimAsStringList("roles");
-        if (roles == null || roles.isEmpty()) {
-            return "Cliente";
-        }
-        if (roles.contains("Administrador")) return "Administrador";
-        if (roles.contains("Repartidor")) return "Repartidor";
-        return roles.get(0);
+    List<String> roles = jwt.getClaimAsStringList("roles");
+    if (roles == null || roles.isEmpty()) {
+        return "Cliente";
     }
+    if (roles.stream().anyMatch(r -> r.equalsIgnoreCase("Administrador") || r.equalsIgnoreCase("ADMIN"))) {
+        return "Administrador";
+    }
+    if (roles.stream().anyMatch(r -> r.equalsIgnoreCase("Repartidor"))) {
+        return "Repartidor";
+    }
+    return roles.get(0);
+}
 }
