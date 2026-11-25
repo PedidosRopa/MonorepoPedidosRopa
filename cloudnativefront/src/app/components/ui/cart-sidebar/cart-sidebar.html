@@ -1,0 +1,110 @@
+@if (open()) {
+  <div
+    class="fixed inset-0 z-50"
+    (click)="cerrar()"
+    aria-hidden="true"
+  ></div>
+}
+
+@if (open()) {
+  <aside
+    class="fixed right-0 top-0 h-full w-full sm:w-96 max-w-full z-50 bg-nebula-950 border-l border-white/10 shadow-2xl transform transition-transform duration-300 ease-in-out translate-x-0"
+    aria-label="Carrito de compras"
+  >
+    <div class="flex items-center justify-between p-6 border-b border-white/10">
+      <h2 class="title-grad font-display text-xl font-bold">Tu carrito</h2>
+      <button
+        class="rounded-lg p-2 hover:bg-white/10 transition"
+        (click)="cerrar()"
+        aria-label="Cerrar carrito"
+      >
+        <span class="block w-5 h-5 bg-current opacity-75"></span>
+      </button>
+    </div>
+
+    <div class="p-6 overflow-y-auto max-h-[80vh]">
+      @if (guardando()) {
+        <p class="animate-pulse text-slate-400 text-center py-20">Guardando…</p>
+      } @else if (items().length === 0) {
+        <div class="text-center py-20">
+          <div class="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-6 text-slate-500 font-display text-2xl">🛒</div>
+          <h3 class="text-lg font-semibold text-white mb-2">Tu carrito está vacío</h3>
+          <p class="text-sm text-slate-400">Agrega productos desde el catálogo para comenzar tu pedido.</p>
+          <button
+            class="mt-6 btn-grad"
+            (click)="cerrar(); $event.stopPropagation()"
+          >
+            Ir al catálogo
+          </button>
+        </div>
+      } @else {
+        <table class="w-full text-left">
+          <thead>
+            <tr class="border-b border-white/10 bg-white/5 text-xs tracking-wide text-slate-400 uppercase">
+              <th class="px-4 py-3">Producto</th>
+              <th class="hidden px-4 py-3 sm:table-cell">Precio</th>
+              <th class="px-4 py-3">Cantidad</th>
+              <th class="px-4 py-3 text-right">Subtotal</th>
+              <th class="px-4 py-3"></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (item of items(); track item.productoId) {
+              <tr class="border-b border-white/5">
+                <td class="px-4 py-4 flex items-center gap-4">
+                  <div class="w-12 h-12 rounded-lg border border-white/10 bg-white/5 flex items-center justify-center text-slate-600 text-xs font-medium">
+                    {{ (item.nombre.charAt(0) || '?') }}{{ (item.nombre.charAt(1) || '?') }}
+                  </div>
+                  <div>
+                    <p class="font-semibold text-white">{{ item.nombre }}</p>
+                    <p class="text-xs text-slate-500">ID: {{ item.productoId }}</p>
+                  </div>
+                </td>
+                <td class="hidden px-4 py-4 sm:table-cell text-slate-300">${{ item.precio }}</td>
+                <td class="px-4 py-4">
+                  <div class="flex items-center gap-2">
+                    <button
+                      class="w-8 h-8 rounded-lg border border-violet-400/30 bg-violet-500/10 flex items-center justify-center text-violet-200 text-xs leading-none transition hover:bg-violet-500/25"
+                      (click)="decrementar(item.productoId); $event.stopPropagation()"
+                      [disabled]="item.cantidad <= 1"
+                    >−</button>
+                    <span class="w-8 text-center font-semibold text-white">{{ item.cantidad }}</span>
+                    <button
+                      class="w-8 h-8 rounded-lg border border-blue-400/30 bg-blue-500/10 flex items-center justify-center text-blue-200 text-xs leading-none transition hover:bg-blue-500/25"
+                      (click)="incrementar(item.productoId); $event.stopPropagation()"
+                    >+</button>
+                  </div>
+                </td>
+                <td class="px-4 py-4 text-right font-mono text-slate-200">${{ (item.precio * item.cantidad).toFixed(2) }}</td>
+                <td class="px-4 py-4">
+                  <button
+                    class="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs font-semibold text-rose-200 transition hover:bg-rose-500/25"
+                    (click)="remover(item.productoId); $event.stopPropagation()"
+                  >Eliminar</button>
+                </td>
+              </tr>
+            }
+          </tbody>
+          <tfoot>
+            <tr class="border-t border-white/10 bg-white/5">
+              <td class="px-4 py-4 text-right font-semibold text-slate-300" colspan="3">Total</td>
+              <td class="px-4 py-4 text-right title-grad font-display text-xl font-bold">${{ total() }}</td>
+              <td class="px-4 py-4"></td>
+            </tr>
+          </tfoot>
+        </table>
+      }
+    </div>
+
+    <div class="p-6 border-t border-white/10 flex flex-col gap-3">
+      <button
+        class="w-full btn-ghost"
+        (click)="vaciar(); $event.stopPropagation()"
+      >Vaciar carrito</button>
+      <button
+        class="w-full btn-grad"
+        (click)="finalizarPedido(); $event.stopPropagation()"
+      >Finalizar pedido</button>
+    </div>
+  </aside>
+}

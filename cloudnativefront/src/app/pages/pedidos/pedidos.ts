@@ -3,6 +3,7 @@ import { RouterLink } from '@angular/router';
 import { PedidoService } from '../../core/pedido.service';
 import { Pedido } from '../../core/models';
 import { EstadoBadge } from '../../components/ui/estado-badge';
+import { AuthService } from '../../auth/auth.service';
 
 @Component({
   selector: 'app-pedidos',
@@ -12,7 +13,8 @@ import { EstadoBadge } from '../../components/ui/estado-badge';
   styleUrl: './pedidos.css',
 })
 export class PedidosComponent implements OnInit {
-  private readonly api = inject(PedidoService);
+  protected readonly api = inject(PedidoService);
+  protected readonly auth = inject(AuthService);
 
   protected readonly pedidos = signal<Pedido[]>([]);
   protected readonly loading = signal(false);
@@ -62,5 +64,10 @@ export class PedidosComponent implements OnInit {
       next: () => this.pedidos.update((list) => list.filter((p) => p.idPedido !== id)),
       error: (err) => this.error.set(`No se pudo eliminar: ${err?.message ?? 'error'}`),
     });
+  }
+
+  /** Verifica si el usuario puede actualizar el estado del pedido (Repartidor o Admin) */
+  puedeActualizarEstado(): boolean {
+    return this.auth.hasAnyRole('REPARTIDOR', 'ADMINISTRADOR');
   }
 }

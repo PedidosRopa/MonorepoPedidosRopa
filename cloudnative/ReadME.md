@@ -1,246 +1,170 @@
-# PedidosRopa — Backend
+# Pedidos Ropa — Backend Cloud Native (`cloudnative`)
 
-API REST para catálogo e inventario de ropa y gestión de pedidos. Este módulo está desarrollado con Java y Spring Boot y forma parte del monorepo junto con el frontend Angular de [`cloudnativefront`](../cloudnativefront/README.md).
+Este documento detalla la evolución arquitectónica del backend de **Pedidos Ropa** desde su versión inicial (CRUD síncrono y mensajería básica en RabbitMQ) hacia una **Arquitectura Orientada a Eventos (EDA) y Federada**, integrando **Control de Acceso Basado en Roles (RBAC) con Microsoft Entra ID**, **streaming de eventos y auditoría en tiempo real con Apache Kafka**, **almacenamiento de objetos en AWS S3** y **persistencia ligera del carrito de compras en PostgreSQL**.
 
-## Contenido
+---
 
-- [Arquitectura y tecnologías](#arquitectura-y-tecnologías)
-- [Requisitos](#requisitos)
-- [Configuración](#configuración)
-- [Ejecución local](#ejecución-local)
-- [API REST](#api-rest)
-- [Autenticación y autorización](#autenticación-y-autorización)
-- [Persistencia y reglas de negocio](#persistencia-y-reglas-de-negocio)
-- [RabbitMQ](#rabbitmq)
-- [Pruebas y documentación de API](#pruebas-y-documentación-de-api)
-- [Contenedores y despliegue](#contenedores-y-despliegue)
+## 1. Contraste General: Antes vs. Ahora (Backend)
 
-## Arquitectura y tecnologías
+| Dimensión Técnica | Estado Anterior (Versión Base) | Estado Actual (Backend Finalizado) | Impacto y Beneficio Arquitectónico |
+| :--- | :--- | :--- | :--- |
+| **Identidad y Autorización** | Autenticación genérica (`authenticated()`). Sin diferenciación de permisos por rol ni soporte para método `PATCH` en CORS. | **100% Stateless con Entra ID RBAC.** Spring Security extrae el arreglo `"roles"` (`Administrador`, `Cliente`, `Repartidor`) directo del JWT. Sin tabla `usuarios` redundante. | Seguridad *Zero-Trust* sin sobrecargar PostgreSQL ni duplicar datos de identidad ya gestionados por Azure. |
+| **Mensajería Asíncrona** | Broker único (**RabbitMQ**) para procesar pedidos creados y manejar fallos mediante *Dead Letter Queues* (DLQ). | **Arquitectura Dual-Broker:** **RabbitMQ** se mantiene para comandos de bodega y DLQ; **Apache Kafka** gestiona el *Event Streaming* operativo y de auditoría. | Cada motor cumple su propósito óptimo: RabbitMQ para enrutamiento/reintentos de tareas y Kafka para logs de eventos retenidos con múltiples consumidores. |
+| **Tópicos Kafka y Retención** | Sin integración con Apache Kafka. | **2 tópicos configurados con políticas diferenciadas:**<br>1. `pedidos-estados` (3 particiones, retención 7 días).<br>2. `auditoria-admin` (2 particiones, retención 30 días). | Aislamiento por dominio de datos y tiempos de retención (`retention.ms`) ajustados al ciclo logístico y de cumplimiento. |
+| **Seguimiento de Pedidos (Tracker)** | El pedido solo guardaba su último estado (`PENDIENTE`, `PROCESANDO`, `COMPLETADO`, `CANCELADO`) sin registro histórico. | Flujo **Repartidor + Tracker**: eventos `PedidoEstadoEvent` particionados por `idPedido` en `pedidos-estados`, consumidos en paralelo por `tracker-group` y `pedidos-group`. | Trazabilidad cronológica completa en base de datos y desacoplamiento total entre quien actualiza el estado y quien consulta el historial. |
+| **Auditoría Administrativa** | Sin registro centralizado de acciones administrativas. | **Auditoría desacoplada con Spring AOP (`@AuditarAdmin`):** intercepta operaciones críticas y publica `AdminAuditEvent` en `auditoria-admin`, consumido por `auditoria-logs-group` y `auditoria-alertas-group`. | Separación limpia entre lógica de negocio e infraestructura de observabilidad y seguridad. |
+| **Tolerancia a Fallos y Gestión** | Sin administración dinámica de streaming ni manejo de eventos corruptos en Kafka. | **`DefaultErrorHandler`** con 3 reintentos (`FixedBackOff`) y envío automático a **`.DLT`** (*Dead Letter Topic*), más API REST **`/api/admin/kafka`** (`AdminClient`) y **Kafka-UI**. | Resiliencia ante mensajes malformados y administración replicable de tópicos, configuraciones y *consumer groups*. |
+| **Carrito de Compras** | Sin endpoints ni persistencia en servidor; el backend únicamente recibía el payload final al crear el pedido. | **Persistencia Ligera por Puntero JSON (`carritos_usuario`):** tabla clave-valor en PostgreSQL indexada por `entra_oid` que almacena `items_json` (`[{ productoId, cantidad }]`). | Persistencia entre sesiones y dispositivos con un peso mínimo en RDS ($\approx 80\text{ bytes}$ por usuario) sin levantar servidores Redis extra. |
+| **Imágenes de Productos** | Entidad `Producto` únicamente textual sin soporte multimedia. | Almacenamiento de archivos binarios en **AWS S3** mediante AWS SDK v2, persistiendo solo la URL pública (`imagen_url`) en PostgreSQL. | Mantiene la base de datos relacional liviana y delega los archivos estáticos a un servicio de *Object Storage* escalable. |
+| **Modelo de Datos (RDS)** | 3 tablas (`productos`, `pedidos`, `detalle_pedidos`). | 5 tablas (`productos`, `pedidos`, `detalle_pedidos`, `historial_pedidos`, `carritos_usuario`). | Modelo relacional limpio: normalizado para transacciones ACID y desnormalizado estratégicamente para historial de eventos y caché JSON. |
 
-La aplicación es un único servicio Spring Boot; no implementa un BFF ni un API Gateway propio. En el despliegue actual, el frontend se sirve por AWS Amplify y consume esta API a través del API Gateway configurado en el entorno de producción.
+---
 
-| Área | Implementación |
-| --- | --- |
-| Lenguaje y runtime | Java 21 |
-| Framework web | Spring Boot 4.1.1, Spring MVC |
-| Seguridad | Spring Security OAuth2 Resource Server; valida access tokens JWT de Microsoft Entra ID |
-| Datos | Spring Data JPA / Hibernate y PostgreSQL |
-| Mensajería | Spring AMQP y RabbitMQ |
-| Validación y mapeo | Jakarta Validation, MapStruct y Lombok |
-| API docs | Springdoc OpenAPI 2.8.14 / Swagger UI |
-| Build | Maven Wrapper |
+## 2. Arquitectura del Backend (Flujo End-to-End)
 
-PostgreSQL es el único driver de base de datos incluido. No hay configuración ni dependencia H2 en el proyecto actual.
-
-## Requisitos
-
-- JDK 21.
-- PostgreSQL accesible desde el proceso del backend.
-- RabbitMQ accesible desde el proceso del backend.
-- Una app registration de Microsoft Entra ID para la API, con el scope delegado `access_as_user`, además del tenant y audience correspondientes.
-- Maven no es necesario si se utiliza el Maven Wrapper incluido.
-
-## Configuración
-
-La configuración está en `src/main/resources/application.properties`. Las credenciales y las direcciones de servicios se pasan mediante variables de entorno; no se deben guardar secretos en el repositorio.
-
-| Variable | Uso |
-| --- | --- |
-| `DB_URL` | URL JDBC de PostgreSQL, por ejemplo `jdbc:postgresql://localhost:5432/pedidosropa`. Obligatoria. |
-| `DB_USERNAME` | Usuario de PostgreSQL. Obligatoria. |
-| `DB_PASSWORD` | Contraseña de PostgreSQL. Obligatoria. |
-| `AZURE_TENANT_ID` | Tenant de Entra ID que emite los tokens. Obligatoria. |
-| `AZURE_CLIENT_ID` | Audience de la API; la configuración admite el ID y `api://<AZURE_CLIENT_ID>`. Obligatoria. |
-| `RABBITMQ_HOST` | Host de RabbitMQ; por defecto, `rabbitmq` (nombre del servicio en Docker Compose). |
-| `RABBITMQ_PORT` | Puerto AMQP; por defecto, `5672`. |
-| `RABBITMQ_USERNAME` | Usuario AMQP; por defecto, `guest`. |
-| `RABBITMQ_PASSWORD` | Contraseña AMQP; por defecto, `guest`. |
-
-La URL del issuer se deriva de `AZURE_TENANT_ID`: `https://login.microsoftonline.com/<AZURE_TENANT_ID>/v2.0`. El frontend solicita el scope de API delegado `api://<id-de-la-api>/access_as_user`; debe corresponder a la audiencia que valida este servicio.
-
-JPA tiene `spring.jpa.hibernate.ddl-auto=update`: Hibernate actualiza el esquema al iniciar. No hay un sistema de migraciones versionadas configurado.
-
-### CORS
-
-`SecurityConfig` permite actualmente el origen de producción `https://deploy.d2oilif5re81zp.amplifyapp.com`, los métodos HTTP comunes y las cabeceras usadas por Angular/MSAL. `http://localhost:4200` no está incluido. Para ejecutar el frontend local en un navegador, se debe permitir explícitamente su origen en `SecurityConfig` y reiniciar el backend. Ajustar esta lista al dominio real al cambiar el dominio del frontend; no se habilitan orígenes arbitrarios.
-
-## Ejecución local
-
-### 1. Iniciar RabbitMQ
-
-Desde `cloudnative`, levantar solo el servicio RabbitMQ definido en `docker-compose.yml`:
-
-```bash
-docker compose up -d rabbitmq
+```
++-----------------------+       JWT (Roles: Admin, Cliente, Repartidor)       +-----------------------+
+|     Cliente REST      | <-------------------------------------------------> |  Microsoft Entra ID   |
+|  (Bearer Token JWT)   |                                                     |       (IDaaS)         |
++-----------+-----------+                                                     +-----------------------+
+            |
+            | HTTPS / REST
+            v
++---------------------------------------------------------------------------------------------------+
+|                             Backend Spring Boot 4.1 (Java 21 - Docker / EC2)                      |
+|                                                                                                   |
+|  [ProductoController] ---> [S3Service] -----------------------------------> ( AWS S3 Bucket )     |
+|  [CarritoController]  ---> [CarritoService] (Puntero entra_oid -> JSON) --+                       |
+|  [KafkaAdminController] -> [AdminClient] ----+                            |                       |
+|  [AOP @AuditarAdmin] ----> [AdminAuditProd] -+                            v                       |
+|  [PedidoController]   ---> [PedidoService]   |                    +-----------------------+       |
+|                               |       |      |                    |  PostgreSQL (AWS RDS) |       |
+|         +---------------------+       |      |                    |  - productos          |       |
+|         | (Comando Creación)          |      |                    |  - pedidos            |       |
+|         v                             v      v                    |  - detalle_pedidos    |       |
+|  +--------------+           +--------------------------+          |  - carritos_usuario   |       |
+|  |   RabbitMQ   |           |  Apache Kafka + Zookeeper|          |  - historial_pedidos  |       |
+|  |  (+ DLQ)     |           |  + Kafka-UI (:8090)      |          +-----------------------+       |
+|  +------+-------+           +----+----------------+----+                      ^                   |
+|         |                        |                |                           |                   |
+|         v                        |                |                           |                   |
+|  [PedidoProcesamiento]           |                |                           |                   |
+|  (Bodega / StockBajo)            |                |                           |                   |
+|                                  v                v                           |                   |
+|               [Tópico: pedidos-estados]      [Tópico: auditoria-admin]        |                   |
+|               (3 part. | ret. 7 días)        (2 part. | ret. 30 días)         |                   |
+|                      |                                |                       |                   |
+|         +------------+------------+      +------------+------------+          |                   |
+|         v                         v      v                         v          |                   |
+|  [tracker-group]          [pedidos-group] [auditoria-logs]  [auditoria-alertas]                   |
+|  (Inserta hito RDS) --------+             (Bitácora JSON)   (Alertas críticas)                    |
+|                             +-------------------------------------------------+                   |
+|                             * Fallos tras 3 reintentos -> <topico>.DLT                            |
++---------------------------------------------------------------------------------------------------+
 ```
 
-El servicio publica AMQP en `localhost:5672` y la consola de administración en `http://localhost:15672`. El backend ejecutado directamente desde el host debe conectarse a `localhost`, no al hostname Docker `rabbitmq`.
+### Modelo Entidad-Relación Actualizado (PostgreSQL)
 
-### 2. Preparar PostgreSQL
-
-Crear una base de datos y un usuario, y asegurarse de que PostgreSQL escucha en una dirección accesible al backend. PostgreSQL no está incluido como servicio en el `docker-compose.yml`.
-
-### 3. Exportar variables y arrancar Spring Boot
-
-Ejemplo para PowerShell; reemplazar los valores de ejemplo por la configuración local de la base de datos y de Entra ID:
-
-```powershell
-$env:DB_URL = "jdbc:postgresql://localhost:5432/pedidosropa"
-$env:DB_USERNAME = "<usuario>"
-$env:DB_PASSWORD = "<contraseña>"
-$env:AZURE_TENANT_ID = "<tenant-id>"
-$env:AZURE_CLIENT_ID = "<api-client-id>"
-$env:RABBITMQ_HOST = "localhost"
-$env:RABBITMQ_PORT = "5672"
-$env:RABBITMQ_USERNAME = "guest"
-$env:RABBITMQ_PASSWORD = "guest"
-.\mvnw.cmd spring-boot:run
+```
++-----------------------+           +---------------------------+
+|   carritos_usuario    |           |         productos         |
++-----------------------+           +---------------------------+
+| PK entra_oid          |           | PK id_producto            |
+|    items_json (TEXT)  |           |    nombre                 |
++-----------------------+           |    descripcion            |
+                                    |    precio                 |
++-----------------------+           |    stock                  |
+|        pedidos        |           |    categoria              |
++-----------------------+           |    talla                  |
+| PK id_pedido          |<---+      |    genero                 |
+|    desc_pedido        |    |      |    imagen_url (AWS S3)    |
+|    usuario_email      |    |      +---------------------------+
+|    monto_total        |    |                    ^
+|    fecha_pedido       |    |                    | (N:1)
+|    estado             |    |      +---------------------------+
++-----------------------+    |      |      detalle_pedidos      |
+           |                 |      +---------------------------+
+           | (1:N)           +------| PK id_detalle             |
+           v                        | FK id_pedido              |
++-----------------------+           | FK id_producto            |
+|   historial_pedidos   |           |    cantidad               |
++-----------------------+           |    precio_unitario        |
+| PK id_historial       |           +---------------------------+
+| FK id_pedido          |
+|    estado_anterior    |
+|    estado_nuevo       |
+|    actualizado_por... |
+|    fecha_cambio       |
++-----------------------+
 ```
 
-En macOS/Linux se puede usar `./mvnw spring-boot:run` y exportar las mismas variables con el mecanismo del shell. La API queda disponible en `http://localhost:8080`.
+---
 
-Para probar endpoints autenticados, iniciar sesión mediante el frontend o adquirir un access token válido para el scope de la API. La ruta pública del catálogo no requiere token.
+## 3. Cambios Implementados en el Backend (`cloudnative`)
 
-## API REST
+### 3.1. Infraestructura y Contenedores (`docker-compose.yml` y `application.properties`)
 
-Todos los endpoints están bajo `/api`. Los ejemplos de respuesta omiten campos que pueden ser `null` y muestran la forma general, no datos reales.
+* **Clúster Completo de Mensajería y Observabilidad:** `docker-compose.yml` orquesta los servicios `zookeeper` (`confluentinc/cp-zookeeper:7.6.1`), `kafka` (`confluentinc/cp-kafka:7.6.1`), `kafka-ui` (`provectuslabs/kafka-ui` expuesto en el puerto `8090`), `rabbitmq:3-management` y `backend`, con límites de memoria (`KAFKA_HEAP_OPTS`) calibrados para instancias AWS EC2.
+* **Propiedades de Kafka y S3:** Se incorporaron `spring.kafka.bootstrap-servers`, los tópicos `app.kafka.topics.pedidos-estados=pedidos-estados` y `app.kafka.topics.auditoria-admin=auditoria-admin`, y las variables `aws.s3.bucket` / `aws.s3.region` en `application.properties`.
 
-### Productos — `/api/productos`
+### 3.2. Seguridad Federada (`SecurityConfig.java` y `SecurityUtils.java`)
 
-| Método y ruta | Acceso | Resultado |
-| --- | --- | --- |
-| `GET /api/productos` | Público | Lista el catálogo. Acepta `categoria` y/o `talla`; si se envían ambos, aplica ambos filtros. |
-| `GET /api/productos/{id}` | Público | Consulta un producto por ID. |
-| `POST /api/productos` | JWT | Crea un producto y devuelve `201 Created`. |
-| `DELETE /api/productos/{id}` | JWT | Elimina un producto y devuelve `204 No Content`. |
+* Se habilitó `@EnableMethodSecurity` para proteger endpoints a nivel de método con `@PreAuthorize`.
+* Se configuró `JwtAuthenticationConverter` mapeando el claim `"roles"` del token de Microsoft Entra ID con el prefijo `ROLE_` (`ROLE_Administrador`, `ROLE_Cliente`, `ROLE_Repartidor`).
+* Se habilitó el método HTTP `PATCH` en `CorsConfigurationSource`.
+* `SecurityUtils` extrae tanto `email` (`preferred_username`) como el identificador único inmutable `oid` (`extractOid(Jwt)`).
 
-Ejemplo de cuerpo para crear un producto:
+### 3.3. Arquitectura Multi-Tópico, Consumer Groups y Resiliencia (`KafkaConfig.java`)
 
-```json
-{
-  "nombre": "Polera básica",
-  "descripcion": "Algodón",
-  "precio": 12990,
-  "stock": 20,
-  "categoria": "Poleras",
-  "talla": "M",
-  "genero": "Unisex"
-}
-```
+* **Tópico 1 — `pedidos-estados`:** Configurado con **3 particiones**, **1 réplica**, `retention.ms=604800000` (7 días) y `cleanup.policy=delete`. `PedidoEstadoProducer` publica `PedidoEstadoEvent` usando `idPedido` como *Message Key* para garantizar orden estricto por orden. Es consumido por dos grupos independientes:
+  * `tracker-group`: Persiste cada hito cronológico en `historial_pedidos`.
+  * `pedidos-group`: Sincroniza el estado maestro en `pedidos` y registra analítica de entregas completadas.
+* **Tópico 2 — `auditoria-admin`:** Configurado con **2 particiones**, **1 réplica**, `retention.ms=2592000000` (30 días) y `cleanup.policy=delete`. Mediante la anotación `@AuditarAdmin` y el aspecto `AdminAuditAspect` (Spring AOP), cada operación administrativa en Productos, S3, RabbitMQ o Kafka publica `AdminAuditEvent` con *Message Key* `adminEmail`. Es consumido por dos grupos independientes:
+  * `auditoria-logs-group`: Valida el payload y escribe la bitácora estructurada de auditoría.
+  * `auditoria-alertas-group`: Monitorea operaciones destructivas (`ELIMINAR_PRODUCTO`, `ELIMINAR_TOPICO`, `MODIFICAR_CONFIG_TOPICO`, `ELIMINAR_COLA`, `ELIMINAR_EXCHANGE`) y emite alertas de seguridad.
+* **Manejo de Errores y DLT (`DefaultErrorHandler`):** Configurado con `FixedBackOff(2000L, 3L)` (3 reintentos cada 2 segundos) y `DeadLetterPublishingRecoverer` para redirigir eventos defectuosos hacia `<topico>.DLT` sin detener el consumo.
 
-`nombre`, `categoria` y `talla` son obligatorios; `precio` debe ser positivo y `stock` no puede ser negativo.
+### 3.4. Administración Dinámica de Kafka (`KafkaAdminController.java`)
 
-### Pedidos — `/api/pedidos`
+* Implementado sobre la API moderna de `AdminClient` (Kafka 4.1) y restringido a `hasRole('Administrador')`, permite listar tópicos y sus configuraciones, crear nuevos tópicos con particiones/retención personalizadas, modificar `retention.ms` o `cleanup.policy` en caliente mediante `incrementalAlterConfigs`, eliminar tópicos e inspeccionar los *consumer groups* activos (`listGroups(ListGroupsOptions.forConsumerGroups())`).
 
-| Método y ruta | Acceso | Resultado |
-| --- | --- | --- |
-| `GET /api/pedidos` | JWT | Lista todos los pedidos del sistema. No hay una restricción de rol administrador implementada. |
-| `GET /api/pedidos/mis-pedidos` | JWT | Filtra por la identidad extraída del JWT. |
-| `POST /api/pedidos` | JWT | Valida y descuenta stock, calcula el total en el servidor, persiste el pedido y publica el evento de pedido. Devuelve `201 Created`. |
-| `DELETE /api/pedidos/{id}` | JWT | Cancela el pedido, repone el stock y devuelve `204 No Content`. No comprueba que el pedido pertenezca al usuario autenticado. |
+### 3.5. Almacenamiento Multimedia y Carrito Persistente
 
-Ejemplo de creación:
+* **AWS S3 (`S3Service` y `ProductoService`):** Sube archivos binarios al bucket configurado bajo la ruta `productos/{uuid}-{filename}` y almacena la URL pública resultante en `Producto.imagenUrl`.
+* **Carrito Puntero (`CarritoUsuario`, `CarritoService`, `CarritoController`):** Persiste el listado compacto de `DetalleItemDto` (`productoId` y `cantidad`) serializado en JSON bajo la clave primaria `entra_oid`. Al confirmar un pedido en `PedidoService.crearPedido()`, el carrito del usuario se elimina automáticamente dentro de la misma transacción.
 
-```json
-{
-  "descPedido": "Entregar por la tarde",
-  "items": [
-    { "productoId": 1, "cantidad": 2 },
-    { "productoId": 4, "cantidad": 1 }
-  ]
-}
-```
+### 3.6. Contrato de Endpoints REST
 
-`items` debe contener al menos un elemento, cada `productoId` debe existir y `cantidad` debe ser al menos 1. El precio, subtotal, total, estado inicial (`PENDIENTE`), fecha y usuario no se aceptan del cliente: el backend los establece usando los datos del producto y del JWT.
+| Dominio | Método | Endpoint | Rol Requerido | Descripción |
+| :--- | :--- | :--- | :--- | :--- |
+| **Productos** | `GET` | `/api/productos` | Público | Lista o filtra productos por `categoria` y `talla` (incluye `imagenUrl`). |
+| **Productos** | `POST` | `/api/productos` | `Administrador` | Crea un nuevo producto en el catálogo (auditado en Kafka). |
+| **Productos** | `POST` | `/api/productos/{id}/imagen` | `Administrador` | Sube una imagen (`multipart/form-data`, campo `file`) a AWS S3 y guarda su URL. |
+| **Productos** | `DELETE` | `/api/productos/{id}` | `Administrador` | Elimina un producto del catálogo (auditado y alertado en Kafka). |
+| **Carrito** | `GET` | `/api/carrito` | Autenticado | Recupera el arreglo JSON `[{ productoId, cantidad }]` asociado al `oid` del usuario. |
+| **Carrito** | `PUT` | `/api/carrito` | Autenticado | Sincroniza y persiste los ítems del carrito del usuario en PostgreSQL. |
+| **Carrito** | `DELETE` | `/api/carrito` | Autenticado | Vacía el carrito del usuario. |
+| **Pedidos** | `POST` | `/api/pedidos` | Autenticado | Crea orden, descuenta stock, publica en RabbitMQ + Kafka y limpia el carrito en RDS. |
+| **Pedidos** | `GET` | `/api/pedidos/mis-pedidos` | Autenticado | Lista los pedidos del usuario autenticado. |
+| **Pedidos** | `GET` | `/api/pedidos` | `Repartidor`, `Administrador` | Lista todos los pedidos del sistema para gestión operativa y despacho. |
+| **Pedidos** | `PATCH` | `/api/pedidos/{id}/estado` | `Repartidor`, `Administrador` | Cambia el estado del pedido (`EN_PREPARACION`, `EN_CAMINO`, `ENTREGADO`, etc.) y dispara `PedidoEstadoEvent` hacia Kafka. |
+| **Pedidos** | `GET` | `/api/pedidos/{id}/historial` | Autenticado | Devuelve la línea de tiempo cronológica del pedido almacenada en `historial_pedidos`. |
+| **Pedidos** | `DELETE` | `/api/pedidos/{id}` | Autenticado | Cancela el pedido, restituye stock y emite evento `CANCELADO` a Kafka. |
+| **Admin Kafka** | `GET` | `/api/admin/kafka/topics` | `Administrador` | Lista tópicos, particiones, réplicas y políticas (`retention.ms`, `cleanup.policy`). |
+| **Admin Kafka** | `POST` | `/api/admin/kafka/topics` | `Administrador` | Crea dinámicamente un tópico en el broker Kafka. |
+| **Admin Kafka** | `PATCH` | `/api/admin/kafka/topics/{nombre}/config` | `Administrador` | Actualiza dinámicamente `retention.ms` o `cleanup.policy` de un tópico. |
+| **Admin Kafka** | `DELETE` | `/api/admin/kafka/topics/{nombre}` | `Administrador` | Elimina un tópico del clúster Kafka. |
+| **Admin Kafka** | `GET` | `/api/admin/kafka/consumer-groups` | `Administrador` | Inspecciona el estado, miembros activos y tópicos asignados de cada *consumer group*. |
+| **Admin RabbitMQ** | `GET/POST/DELETE` | `/api/admin/rabbit/**` | `Administrador` | Gestión dinámica de colas, *exchanges* y *bindings* en RabbitMQ (auditado en Kafka). |
 
-La respuesta contiene `idPedido`, `descPedido`, `usuarioEmail`, `montoTotal`, `estado`, `fechaPedido` y `detalles`. Cada detalle incluye ID y nombre del producto, cantidad, precio unitario congelado al momento de la compra y subtotal.
+---
 
-### Administración de RabbitMQ — `/api/admin/rabbitmq`
+## 4. Versionamiento en Apache Kafka y Schema Evolution
 
-Todas las rutas requieren un JWT válido. No hay autorización por roles ni endpoints de consulta/listado en este controlador.
+El versionamiento en la capa de streaming se aborda en dos niveles complementarios:
 
-| Método y ruta | Resultado |
-| --- | --- |
-| `POST /api/admin/rabbitmq/queues` | Crea una cola (`201`). Body: `{"nombre":"cola.demo","durable":true}`. |
-| `DELETE /api/admin/rabbitmq/queues/{nombre}` | Elimina la cola (`204`) o devuelve `404` si no existía. |
-| `POST /api/admin/rabbitmq/exchanges` | Crea un exchange `direct`, `topic` o `fanout` (`201`). Body: `{"nombre":"exchange.demo","tipo":"direct"}`. |
-| `DELETE /api/admin/rabbitmq/exchanges/{nombre}` | Elimina el exchange (`204`) o devuelve `404` si no existía. |
-| `POST /api/admin/rabbitmq/bindings` | Vincula una cola con un exchange (`201`). Body: `{"colaNombre":"cola.demo","exchangeNombre":"exchange.demo","routingKey":"demo.key"}`. |
-
-No existe una ruta para eliminar bindings. Estas operaciones modifican la topología real del broker; usarlas con cuidado.
-
-### Errores
-
-La validación de los cuerpos, el stock insuficiente y la cancelación de un pedido ya cancelado producen `400 Bad Request`; un pedido inexistente produce `404 Not Found`. La eliminación de una cola o exchange inexistente también produce `404`. Los errores manejados se devuelven en formato `ProblemDetail`. Una petición sin token válido a una ruta protegida recibe `401` o `403`, según el caso.
-
-**Comportamiento actual a tener en cuenta:** la consulta o eliminación de un producto inexistente lanza una `RuntimeException` genérica en `ProductoService`; el manejador global no la convierte en `404`, por lo que actualmente acaba como `500 Internal Server Error`.
-
-## Autenticación y autorización
-
-El backend actúa como OAuth2 Resource Server: valida firma, emisor, expiración y audience del JWT contra los metadatos/JWKS de Microsoft Entra ID. El frontend usa MSAL para el inicio de sesión y envía un access token, no un ID token, al scope de la API en `Authorization: Bearer <access-token>`.
-
-- Son públicos Swagger/OpenAPI, las peticiones `OPTIONS` y las rutas `GET /api/productos/**`.
-- Cualquier otra ruta requiere un JWT válido.
-- El email del pedido se toma de `preferred_username`, luego de `email`, y como último recurso de `sub`.
-- La configuración actual no define roles ni permisos específicos para endpoints de administrador. En particular, `GET /api/pedidos` devuelve todos los pedidos a cualquier usuario autenticado.
-
-## Persistencia y reglas de negocio
-
-- `Producto`: nombre, descripción, precio, stock, categoría, talla y género.
-- `Pedido`: usuario, fecha, descripción, total y estado.
-- `DetallePedido`: producto, cantidad y precio unitario de la compra.
-- Un pedido puede estar en `PENDIENTE`, `PENDIENTE_APROBACION`, `PROCESANDO`, `COMPLETADO` o `CANCELADO`. El flujo de creación actual establece `PENDIENTE`; el endpoint de cancelación lo cambia a `CANCELADO`.
-- La creación del pedido verifica el stock por producto, calcula el precio en el servidor y descuenta unidades dentro de una transacción.
-- La cancelación repone las unidades de los detalles y no permite cancelar dos veces el mismo pedido.
-
-## RabbitMQ
-
-Al iniciar, Spring declara exchanges, colas durables y bindings para pedidos y productos.
-
-| Flujo | Exchange y tipo | Cola | Routing key | DLX / DLQ |
-| --- | --- | --- | --- | --- |
-| Pedido | `pedidos.exchange` (`topic`) | `pedidos.procesamiento.queue` | `pedidos.creado.routing.key` | `pedidos.dlx` / `pedidos.procesamiento.dlq`, key `pedidos.dlq.routing.key` |
-| Producto | `productos.exchange` (`direct`) | `productos.procesamiento.queue` | `productos.routing.key` | `productos.dlx` / `productos.procesamiento.dlq`, key `productos.dlq.routing.key` |
-
-Al crear un pedido, el servicio publica un evento JSON con ID, usuario, total, fecha y resumen de productos. El listener de pedidos simula el procesamiento, confirma mensajes válidos (`ACK`) y envía mensajes fallidos a la DLQ (`NACK` sin reencolar). El listener de la DLQ registra el evento y lo confirma.
-
-Aunque la topología de productos está declarada y existe un DTO de stock bajo, en el código actual no hay publicador ni listener de eventos de producto. La DLQ de productos tampoco tiene un listener implementado.
-
-Los nombres de esta topología se encuentran en `application.properties`; la conexión se configura con las variables `RABBITMQ_*` descritas arriba.
-
-## Pruebas y documentación de API
-
-Desde `cloudnative`:
-
-```bash
-./mvnw test
-```
-
-En Windows:
-
-```powershell
-.\mvnw.cmd test
-```
-
-La suite actual contiene una prueba de carga del contexto (`contextLoads`); no representa pruebas funcionales de todos los endpoints o del broker.
-
-Con la aplicación en ejecución:
-
-- Swagger UI: `http://localhost:8080/swagger-ui/index.html`
-- OpenAPI JSON: `http://localhost:8080/v3/api-docs`
-
-## Contenedores y despliegue
-
-El `dockerfile` construye un JAR con Maven y Java 21 y lo ejecuta en una imagen JRE. `docker-compose.yml` define el backend y RabbitMQ, pero **no** define PostgreSQL. Para levantar el backend en Compose, hay que proporcionar en el entorno o en un archivo `.env` las variables de base de datos y Entra ID indicadas antes; `DB_URL` debe ser alcanzable desde el contenedor (en Windows/macOS, `localhost` dentro del contenedor no es el host). En la red de Compose el backend debe usar `RABBITMQ_HOST=rabbitmq`.
-
-RabbitMQ restringe por defecto el usuario `guest` a conexiones locales al propio broker. Como el backend en Compose se conecta desde otro contenedor, hay que configurar un usuario/contraseña no predeterminados en el broker y proporcionar los mismos valores mediante `RABBITMQ_USERNAME` y `RABBITMQ_PASSWORD` al backend. El Compose actual no configura esas credenciales de broker.
-
-Ejemplo de ciclo de vida, tras preparar las variables y una base de datos accesible:
-
-```bash
-docker compose up --build -d
-docker compose logs -f backend
-docker compose down
-```
-
-El repositorio configura el build de Amplify para el frontend. No contiene una configuración de despliegue del backend a API Gateway, EC2 o RDS; esos recursos deben configurarse por separado y sus direcciones/orígenes deben coincidir con la configuración del frontend y CORS.
+1. **Versionamiento de Cliente y API Administrativa (Apache Kafka 4.1):**
+   * El proyecto utiliza `spring-kafka` junto a `kafka-clients` 4.1 (incluido en Spring Boot 4.1.1), empleando las APIs vigentes de administración unificada de grupos (`AdminClient.listGroups(ListGroupsOptions.forConsumerGroups())`, `GroupListing` y `ConsumerGroupDescription.groupState()`), eliminando métodos deprecados de versiones 3.x.
+2. **Versionamiento de Esquemas y Eventos (*Schema Evolution*):**
+   * Permite evolucionar la estructura de los mensajes (por ejemplo, añadir nuevos campos de telemetría a `PedidoEstadoEvent` o `AdminAuditEvent`) sin interrumpir a los consumidores activos.
+   * **Estrategia aplicada:** Inclusión explícita del atributo `schemaVersion: "1.0"` en ambos DTOs de eventos JSON, permitiendo a los consumidores aplicar deserialización condicional o enrutar versiones incompatibles hacia tópicos versionados (ej. `pedidos-estados.v2`), siguiendo principios de compatibilidad **Backward** (consumidores nuevos leen eventos antiguos) y **Forward** (consumidores antiguos ignoran campos nuevos).

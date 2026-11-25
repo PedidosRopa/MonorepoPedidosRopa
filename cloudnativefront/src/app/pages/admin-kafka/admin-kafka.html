@@ -1,0 +1,129 @@
+<section class="py-10 max-w-6xl mx-auto">
+  <header class="mb-8">
+    <h1 class="title-grad text-3xl font-bold md:text-4xl">Administración Kafka</h1>
+    <p class="mt-2 text-slate-400">
+      Gestión de topics y consumer groups. Solo accesible para usuarios con rol
+      <code class="rounded bg-white/5 px-1 py-0.5 text-xs text-violet-300">ADMINISTRADOR</code>.
+    </p>
+  </header>
+
+  @if (error()) {
+    <p class="mb-6 rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-rose-200">{{ error() }}</p>
+  }
+  @if (mensaje()) {
+    <p class="mb-6 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-emerald-200">{{ mensaje() }}</p>
+  }
+
+  <!-- Crear topic -->
+  <div class="glass mb-8 p-6 rounded-2xl">
+    <h2 class="font-display mb-4 text-lg font-semibold text-white">Crear topic</h2>
+    <form class="grid gap-3 sm:grid-cols-3 lg:grid-cols-4" (ngSubmit)="crearTopic()">
+      <input
+        class="input-neon"
+        [(ngModel)]="topicNombre"
+        name="topicNombre"
+        placeholder="Nombre del topic (ej. pedidos-estados)"
+        required
+      />
+      <input
+        class="input-neon"
+        [(ngModel)]="topicParticiones"
+        name="topicParticiones"
+        type="number"
+        min="1"
+        placeholder="Particiones"
+        required
+      />
+      <input
+        class="input-neon"
+        [(ngModel)]="topicReplicas"
+        name="topicReplicas"
+        type="number"
+        min="1"
+        placeholder="Réplicas"
+        required
+      />
+      <button class="btn-grad" type="submit">Crear</button>
+    </form>
+  </div>
+
+  <!-- Topics -->
+  <div class="mb-8">
+    <h2 class="font-display mb-4 text-lg font-semibold text-white">Topics</h2>
+    @if (loading()) {
+      <p class="animate-pulse text-slate-400">Cargando…</p>
+    } @else if (topics().length === 0) {
+      <p class="text-slate-400">Sin topics creados.</p>
+    } @else {
+      <div class="glass overflow-hidden rounded-2xl">
+        <table class="w-full text-left">
+          <thead>
+            <tr class="border-b border-white/10 bg-white/5 text-xs tracking-wide text-slate-400 uppercase">
+              <th class="px-4 py-3">Nombre</th>
+              <th class="px-4 py-3">Particiones</th>
+              <th class="px-4 py-3">Réplicas</th>
+              <th class="px-4 py-3">Retención (ms)</th>
+              <th class="px-4 py-3">Cleanup</th>
+              <th class="px-4 py-3"></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (t of topics(); track t.nombre) {
+              <tr class="border-b border-white/5">
+                <td class="px-4 py-3 font-mono text-sm text-slate-300">{{ t.nombre }}</td>
+                <td class="px-4 py-3 text-slate-200">{{ t.particiones }}</td>
+                <td class="px-4 py-3 text-slate-200">{{ t.factorReplicacion }}</td>
+                <td class="px-4 py-3 text-slate-200">{{ t.configuraciones['retention.ms'] ?? '—' }}</td>
+                <td class="px-4 py-3 text-slate-200">{{ t.configuraciones['cleanup.policy'] ?? '—' }}</td>
+                <td class="px-4 py-3">
+                  <button
+                    class="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-1.5 text-xs font-semibold text-rose-200 transition hover:bg-rose-500/25"
+                    (click)="eliminarTopic(t.nombre)"
+                  >Eliminar</button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+
+  <!-- Consumer groups -->
+  <div>
+    <h2 class="font-display mb-4 text-lg font-semibold text-white">Consumer groups</h2>
+    @if (loading()) {
+      <p class="animate-pulse text-slate-400">Cargando…</p>
+    } @else if (consumerGroups().length === 0) {
+      <p class="text-slate-400">Sin consumer groups activos.</p>
+    } @else {
+      <div class="glass overflow-hidden rounded-2xl">
+        <table class="w-full text-left">
+          <thead>
+            <tr class="border-b border-white/10 bg-white/5 text-xs tracking-wide text-slate-400 uppercase">
+              <th class="px-4 py-3">ID del grupo</th>
+              <th class="px-4 py-3">Estado</th>
+              <th class="px-4 py-3">Miembros</th>
+              <th class="px-4 py-3">Topics</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (g of consumerGroups(); track g.id) {
+              <tr class="border-b border-white/5">
+                <td class="px-4 py-3 font-mono text-sm text-slate-300">{{ g.id }}</td>
+                <td class="px-4 py-3">
+                  <span
+                    class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold"
+                    [class]="g.groupState === 'Stable' ? 'border-emerald-400/30 bg-emerald-500/10 text-emerald-200' : 'border-amber-400/30 bg-amber-500/10 text-amber-200'"
+                  >{{ g.groupState }}</span>
+                </td>
+                <td class="px-4 py-3 text-slate-200">{{ g.miembros }}</td>
+                <td class="px-4 py-3 text-sm text-slate-400">{{ g.topicos.join(', ') }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+</section>

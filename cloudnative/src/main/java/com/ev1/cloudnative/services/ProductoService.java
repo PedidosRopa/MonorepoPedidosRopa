@@ -1,13 +1,16 @@
 package com.ev1.cloudnative.services;
 
 import com.ev1.cloudnative.dtos.ProductoDto;
+import com.ev1.cloudnative.exceptions.ResourceNotFoundException;
 import com.ev1.cloudnative.mappers.ProductoMapper;
 import com.ev1.cloudnative.model.Producto;
 import com.ev1.cloudnative.repositories.ProductoRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
 
 @Service
@@ -16,6 +19,7 @@ public class ProductoService {
 
     private final ProductoRepository productoRepository;
     private final ProductoMapper productoMapper;
+    private final S3Service s3Service;
 
     @Transactional(readOnly = true)
     public List<ProductoDto> obtenerTodos() {
@@ -47,7 +51,7 @@ public class ProductoService {
     @Transactional(readOnly = true)
     public ProductoDto obtenerPorId(Long id) {
         Producto producto = productoRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Producto no encontrado con el ID: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Producto no encontrado con el ID: " + id));
         return productoMapper.toDto(producto);
     }
 
@@ -59,9 +63,21 @@ public class ProductoService {
     }
 
     @Transactional
+    public ProductoDto actualizarImagen(Long idProducto, MultipartFile file) throws IOException {
+        Producto producto = productoRepository.findById(idProducto)
+                .orElseThrow(() -> new ResourceNotFoundException("Producto no encontrado con el ID: " + idProducto));
+
+        String urlS3 = s3Service.subirImagenProducto(file);
+        producto.setImagenUrl(urlS3);
+
+        Producto actualizado = productoRepository.save(producto);
+        return productoMapper.toDto(actualizado);
+    }
+
+    @Transactional
     public void eliminar(Long id) {
         if (!productoRepository.existsById(id)) {
-            throw new RuntimeException("No se puede eliminar. Producto no encontrado con ID: " + id);
+            throw new ResourceNotFoundException("No se puede eliminar. Producto no encontrado con ID: " + id);
         }
         productoRepository.deleteById(id);
     }

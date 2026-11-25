@@ -43,4 +43,7 @@ public class Producto {
 
     @Column(length = 20)
     private String genero;    // Ej: Hombre, Mujer, Unisex
+
+    @Column(length = 500)
+    private String imagenUrl;
 }

@@ -3,12 +3,27 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { ProductoService } from '../../core/producto.service';
 import { PedidoService } from '../../core/pedido.service';
-import { DetalleItem, PedidoRequest, Producto } from '../../core/models';
+import { CarritoService } from '../../core/carrito.service';
+import { DetalleItem, PedidoRequest, Producto, CarritoItem } from '../../core/models';
+
+/** Lee los items del carrito pasados por query string (?carrito=...). */
+function leerItemsDesdeQuery(): CarritoItem[] {
+  if (typeof window === 'undefined') return [];
+  const params = new URLSearchParams(window.location.search);
+  const carritoJson = params.get('carrito');
+  if (!carritoJson) return [];
+  try {
+    return JSON.parse(carritoJson) as CarritoItem[];
+  } catch {
+    return [];
+  }
+}
 
 /**
  * Vista "Nuevo pedido": arma un pedido eligiendo productos y cantidades
  * y envía POST /api/pedidos con { descPedido, items } (PedidoRequestDto).
  * El montoTotal y el estado los calcula el backend.
+ * Si hay items en el carrito, se cargan por defecto.
  */
 @Component({
   selector: 'app-nuevo-pedido',
@@ -20,6 +35,7 @@ import { DetalleItem, PedidoRequest, Producto } from '../../core/models';
 export class NuevoPedidoComponent implements OnInit {
   private readonly productosApi = inject(ProductoService);
   private readonly pedidosApi = inject(PedidoService);
+  private readonly carritoApi = inject(CarritoService);
 
   protected readonly productos = signal<Producto[]>([]);
   protected readonly loading = signal(false);
@@ -47,6 +63,18 @@ export class NuevoPedidoComponent implements OnInit {
 
   ngOnInit(): void {
     this.cargar();
+    this.cargarCarrito();
+    // Si llegaron items por query string (desde el sidebar), cargarlos en cantidades
+    const itemsQuery = leerItemsDesdeQuery();
+    if (itemsQuery.length > 0) {
+      const map: Record<number, number> = {};
+      itemsQuery.forEach((i) => {
+        map[i.productoId] = i.cantidad;
+      });
+      this.cantidades.set(map);
+      this.mensaje.set(`Se cargaron ${itemsQuery.length} producto(s) desde tu carrito.`);
+      setTimeout(() => this.mensaje.set(null), 3000);
+    }
   }
 
   cargar(): void {
@@ -67,6 +95,40 @@ export class NuevoPedidoComponent implements OnInit {
           this.loading.set(false);
         },
       });
+  }
+
+  /** Carga los items del carrito guardados en el backend. */
+  cargarCarrito(): void {
+    this.carritoApi.cargar().subscribe({
+      next: (items) => {
+        if (items.length > 0) {
+          this.carritoApi.setItems(items);
+          const map: Record<number, number> = {};
+          items.forEach((i) => {
+            map[i.productoId] = i.cantidad;
+          });
+          this.cantidades.set(map);
+          this.mensaje.set(`Se cargaron ${items.length} producto(s) desde tu carrito.`);
+        }
+      },
+      error: () => {
+        // Si falla, ignorar silenciosamente; el carrito puede estar vacío
+      },
+    });
+  }
+
+  /** Agrega un producto al carrito global (para comprar luego). */
+  agregarAlCarrito(producto: Producto): void {
+    const item: CarritoItem = {
+      productoId: producto.idProducto!,
+      nombre: producto.nombre,
+      precio: producto.precio,
+      cantidad: this.cantidades()[producto.idProducto!] ?? 1,
+      imagenUrl: producto.imagenUrl,
+    };
+    this.carritoApi.agregar(item);
+    this.mensaje.set(`${producto.nombre} agregado al carrito.`);
+    setTimeout(() => this.mensaje.set(null), 3000);
   }
 
   cambiarCantidad(producto: Producto, valor: number): void {
@@ -103,6 +165,11 @@ export class NuevoPedidoComponent implements OnInit {
         this.enviando.set(false);
         this.descPedido = '';
         this.cantidades.set({});
+        // Vaciar el carrito tras crear el pedido exitosamente
+        this.carritoApi.vaciar().subscribe({
+          next: () => this.carritoApi.setItems([]),
+          error: () => {},
+        });
       },
       error: (err) => {
         if (err?.status === 400 && err?.error?.errors) {

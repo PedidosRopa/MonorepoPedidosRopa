@@ -1,0 +1,58 @@
+<section class="py-10 max-w-4xl mx-auto">
+  <header class="mb-8">
+    <nav class="flex items-center gap-2 text-sm text-slate-400 mb-4">
+      <a routerLink="/pedidos" class="hover:text-violet-300 transition">Mis pedidos</a>
+      <span class="text-slate-600">/</span>
+      <span class="text-white">Tracker #{{ idPedido() }}</span>
+    </nav>
+    <h1 class="title-grad text-3xl font-bold md:text-4xl">Seguimiento de pedido</h1>
+    <p class="mt-2 text-slate-400">
+      Línea de tiempo de cambios de estado (eventos publicados vía Kafka).
+    </p>
+  </header>
+
+  @if (error()) {
+    <p class="mb-6 rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-rose-200">{{ error() }}</p>
+    <button class="btn-grad" (click)="cargarHistorial(idPedido()!)">Reintentar</button>
+  } @else if (loading()) {
+    <p class="animate-pulse text-slate-400 text-center py-20">Cargando historial…</p>
+  } @else if (historial().length === 0) {
+    <div class="glass p-12 text-center">
+      <h3 class="text-lg font-semibold text-white mb-2">Sin historial disponible</h3>
+      <p class="text-sm text-slate-400">Aún no se han registrado cambios de estado para este pedido.</p>
+    </div>
+  } @else {
+    <div class="glass overflow-hidden">
+      <table class="w-full text-left text-sm">
+        <thead>
+          <tr class="border-b border-white/10 bg-white/5 text-xs tracking-wide text-slate-400 uppercase">
+            <th class="px-4 py-3 w-20">Fecha</th>
+            <th class="px-4 py-3">Estado anterior</th>
+            <th class="px-4 py-3">Estado nuevo</th>
+            <th class="px-4 py-3">Actualizado por</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (h of historial(); track h.idHistorial) {
+            <tr class="border-b border-white/5 transition hover:bg-violet-500/5 group">
+              <td class="px-4 py-3 font-mono text-xs text-slate-400">{{ formatearFecha(h.fechaCambio) }}</td>
+              <td class="px-4 py-3">
+                <span class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold border-white/15 bg-white/5 text-slate-300">
+                  {{ h.estadoAnterior ?? '—' }}
+                </span>
+              </td>
+              <td class="px-4 py-3">
+                <app-estado-badge [estado]="h.estadoNuevo" />
+              </td>
+              <td class="px-4 py-3 text-sm text-slate-300">{{ h.actualizadoPorEmail ?? 'Sistema' }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <div class="mt-8 flex justify-between items-center">
+      <a routerLink="/pedidos" class="btn-ghost">Volver a mis pedidos</a>
+    </div>
+  }
+</section>

@@ -8,6 +8,7 @@ export interface Producto {
   categoria: string;
   talla: string;
   genero?: string;
+  imagenUrl?: string;
 }
 
 /** Filtros opcionales de GET /api/productos?categoria=..&talla=.. */
@@ -16,18 +17,33 @@ export interface ProductoFiltros {
   talla?: string;
 }
 
-/** Estados del enum com.ev1.cloudnative.model.EstadoPedido. */
+/** Estados del enum com.ev1.cloudnative.model.EstadoPedido (8 valores). */
 export type EstadoPedido =
   | 'PENDIENTE'
   | 'PENDIENTE_APROBACION'
   | 'PROCESANDO'
+  | 'EN_PREPARACION'
+  | 'EN_CAMINO'
+  | 'ENTREGADO'
   | 'COMPLETADO'
   | 'CANCELADO';
+
+/** Roles de usuario del backend (claim 'roles' del JWT de Entra ID). */
+export type RolUsuario = 'ADMINISTRADOR' | 'REPARTIDOR' | 'CLIENTE';
 
 /** Refleja com.ev1.cloudnative.dtos.DetalleItemDto (body de creación). */
 export interface DetalleItem {
   productoId: number;
   cantidad: number;
+}
+
+/** Item del carrito de compras (UI). */
+export interface CarritoItem {
+  productoId: number;
+  nombre: string;
+  precio: number;
+  cantidad: number;
+  imagenUrl?: string;
 }
 
 /** Body de POST /api/pedidos: PedidoRequestDto. El monto y estado los calcula el backend. */
@@ -56,6 +72,21 @@ export interface Pedido {
   detalles?: DetalleResponse[];
 }
 
+/** Refleja HistorialPedido (línea de tiempo de estados). */
+export interface HistorialPedido {
+  idHistorial?: number;
+  idPedido: number;
+  estadoAnterior?: EstadoPedido;
+  estadoNuevo: EstadoPedido;
+  actualizadoPorEmail?: string;
+  fechaCambio?: string;
+}
+
+/** Body de PATCH /api/pedidos/{id}/estado. */
+export interface ActualizarEstadoRequest {
+  nuevoEstado: EstadoPedido;
+}
+
 /* ==== Microservicio administrador de RabbitMQ (dtos.admin) ==== */
 
 /** Refleja com.ev1.cloudnative.dtos.admin.QueueRequestDTO (POST /api/admin/rabbitmq/queues). */
@@ -75,4 +106,37 @@ export interface BindingRequest {
   colaNombre: string;
   exchangeNombre: string;
   routingKey: string;
+}
+
+/* ==== Admin Kafka (dtos.admin.kafka) ==== */
+
+/** Refleja TopicRequestDTO (POST /api/admin/kafka/topics). */
+export interface TopicRequest {
+  nombre: string;
+  particiones: number;
+  replicas: number;
+  retentionMs?: number;
+  cleanupPolicy?: 'delete' | 'compact';
+}
+
+/** Refleja TopicInfoDto (GET /api/admin/kafka/topics). */
+export interface TopicInfo {
+  nombre: string;
+  particiones: number;
+  factorReplicacion: number;
+  configuraciones: Record<string, string>;
+}
+
+/** Refleja TopicConfigUpdateDto (PATCH /api/admin/kafka/topics/{nombre}/config). */
+export interface TopicConfigUpdate {
+  retentionMs?: number;
+  cleanupPolicy?: 'delete' | 'compact';
+}
+
+/** Refleja ConsumerGroupInfoDto (GET /api/admin/kafka/consumer-groups). */
+export interface ConsumerGroupInfo {
+  id: string;
+  groupState: string;
+  miembros: number;
+  topicos: string[];
 }
