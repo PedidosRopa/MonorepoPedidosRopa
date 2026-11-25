@@ -9,7 +9,7 @@
 
   @if (items().length === 0) {
     <div class="glass p-12 text-center">
-      <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-white/5 text-2xl">🛒</div>
+      <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-marca-500/15 text-orquidea-300"><app-icon nombre="bolsa" [tamano]="28" /></div>
       <h3 class="mb-2 text-lg font-semibold text-white">Tu carrito está vacío</h3>
       <p class="text-sm text-slate-400">Agrega productos desde el catálogo para comenzar tu pedido.</p>
       <a routerLink="/productos" class="btn-grad mt-6 inline-flex">Ir al catálogo</a>
@@ -19,13 +19,7 @@
       @for (item of items(); track item.productoId) {
         <li class="glass flex items-center gap-4 p-4">
           <div class="h-16 w-14 shrink-0 overflow-hidden rounded-lg border border-white/10 bg-white/5">
-            @if (item.imagenUrl) {
-              <img [src]="item.imagenUrl" [alt]="item.nombre" class="h-full w-full object-cover" loading="lazy" decoding="async" />
-            } @else {
-              <div class="flex h-full w-full items-center justify-center text-sm font-semibold text-slate-500">
-                {{ (item.nombre.charAt(0) || '?') }}
-              </div>
-            }
+            <app-producto-media [src]="item.imagenUrl" [alt]="item.nombre" [compacto]="true" />
           </div>
           <div class="min-w-0 flex-1">
             <p class="truncate font-semibold text-white">{{ item.nombre }}</p>

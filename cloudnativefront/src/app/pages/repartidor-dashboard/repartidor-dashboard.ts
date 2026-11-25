@@ -18,10 +18,11 @@ import {
   siguientesEstados,
 } from '../../core/pedido-estado';
 
+import { Icon } from '../../components/ui/icon';
 @Component({
   selector: 'app-repartidor-dashboard',
   standalone: true,
-  imports: [RouterLink, EstadoBadge],
+  imports: [RouterLink, EstadoBadge, Icon],
   templateUrl: './repartidor-dashboard.html',
   styleUrl: './repartidor-dashboard.css',
   changeDetection: ChangeDetectionStrategy.OnPush,

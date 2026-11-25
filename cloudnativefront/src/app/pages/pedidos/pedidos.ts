@@ -8,27 +8,32 @@ import {
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { PedidoService } from '../../core/pedido.service';
+import { PagoService } from '../../core/pago.service';
 import { Pedido, EstadoPedido } from '../../core/models';
 import { EstadoBadge } from '../../components/ui/estado-badge';
 import { AuthService } from '../../auth/auth.service';
 import { formatearFecha, formatearMoneda } from '../../core/formato';
 import {
   ESTADO_META,
+  esCancelable,
+  esPagable,
   esTerminal,
   etiquetaEstado,
   siguientesEstados,
 } from '../../core/pedido-estado';
 
+import { Icon } from '../../components/ui/icon';
 @Component({
   selector: 'app-pedidos',
   standalone: true,
-  imports: [RouterLink, EstadoBadge],
+  imports: [RouterLink, EstadoBadge, Icon],
   templateUrl: './pedidos.html',
   styleUrl: './pedidos.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PedidosComponent implements OnInit {
   private readonly api = inject(PedidoService);
+  private readonly pagos = inject(PagoService);
   protected readonly auth = inject(AuthService);
 
   protected readonly pedidos = signal<Pedido[]>([]);
@@ -38,6 +43,7 @@ export class PedidosComponent implements OnInit {
   protected readonly filtro = signal<EstadoPedido | 'TODOS'>('TODOS');
   protected readonly expandido = signal<number | null>(null);
   protected readonly actualizando = signal<number | null>(null);
+  protected readonly pagando = signal<number | null>(null);
 
   protected readonly esStaff = computed(() => this.auth.isStaff());
   protected readonly esAdmin = computed(() => this.auth.isAdmin());
@@ -105,8 +111,34 @@ export class PedidosComponent implements OnInit {
   }
 
   puedeCancelar(pedido: Pedido): boolean {
-    if (!pedido.estado || esTerminal(pedido.estado)) return false;
+    if (!esCancelable(pedido.estado)) return false;
     return this.esAdmin() || this.esPropietario(pedido);
+  }
+
+  /** Solo el dueño paga su pedido, y solo mientras está pendiente. */
+  puedePagar(pedido: Pedido): boolean {
+    return esPagable(pedido.estado) && this.esPropietario(pedido);
+  }
+
+  pagar(pedido: Pedido): void {
+    const id = pedido.idPedido;
+    if (id === undefined || this.pagando() !== null) return;
+
+    this.pagando.set(id);
+    this.error.set(null);
+    this.pagos.crearPreferencia(id).subscribe({
+      next: (preferencia) => {
+        if (!this.pagos.redirigirAlPago(preferencia)) {
+          this.error.set('El backend no devolvió un link de pago válido.');
+          this.pagando.set(null);
+        }
+        // Si redirige, se mantiene "Redirigiendo…" hasta salir de la página.
+      },
+      error: (err) => {
+        this.error.set(this.pagos.mensajeError(err));
+        this.pagando.set(null);
+      },
+    });
   }
 
   esPropietario(pedido: Pedido): boolean {

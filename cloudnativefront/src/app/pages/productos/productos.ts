@@ -7,6 +7,9 @@ import {
   signal,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute, RouterLink } from '@angular/router';
+import { Icon } from '../../components/ui/icon';
+import { ProductoMedia } from '../../components/ui/producto-media';
 import { ProductoService } from '../../core/producto.service';
 import { PedidoService } from '../../core/pedido.service';
 import { CarritoService } from '../../core/carrito.service';
@@ -17,7 +20,7 @@ import { formatearMoneda } from '../../core/formato';
 @Component({
   selector: 'app-productos',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, RouterLink, Icon, ProductoMedia],
   templateUrl: './productos.html',
   styleUrl: './productos.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -26,6 +29,7 @@ export class ProductosComponent implements OnInit {
   private readonly api = inject(ProductoService);
   private readonly pedidosApi = inject(PedidoService);
   private readonly carrito = inject(CarritoService);
+  private readonly route = inject(ActivatedRoute);
   protected readonly auth = inject(AuthService);
 
   protected readonly esAdmin = computed(() => this.auth.isAdmin());
@@ -52,9 +56,18 @@ export class ProductosComponent implements OnInit {
   protected filtroTalla = '';
   protected readonly creando = signal(false);
 
+  /** Foto elegida en el formulario de creación (se sube tras crear el producto). */
+  protected readonly archivoNuevo = signal<File | null>(null);
+  /** id del producto cuya foto se está subiendo. */
+  protected readonly subiendo = signal<number | null>(null);
+
   private temporizador: ReturnType<typeof setTimeout> | null = null;
 
   ngOnInit(): void {
+    // Permite llegar filtrado desde la cinta de categorías del landing (?categoria=...).
+    const params = this.route.snapshot.queryParamMap;
+    this.filtroCategoria = params.get('categoria') ?? '';
+    this.filtroTalla = params.get('talla') ?? '';
     this.cargar();
   }
 
@@ -117,6 +130,11 @@ export class ProductosComponent implements OnInit {
         next: (nuevo) => {
           this.productos.update((lista) => [...lista, nuevo]);
           this.mensaje.set(`Producto "${nuevo.nombre}" creado.`);
+          const foto = this.archivoNuevo();
+          this.archivoNuevo.set(null);
+          if (foto && nuevo.idProducto !== undefined) {
+            this.enviarFoto(nuevo, foto);
+          }
           this.nombre = '';
           this.descripcion = '';
           this.precio = null;
@@ -164,6 +182,59 @@ export class ProductosComponent implements OnInit {
         } else {
           this.error.set(this.mensajeError(err, 'eliminar el producto'));
         }
+      },
+    });
+  }
+
+  elegirArchivoNuevo(input: HTMLInputElement): void {
+    const archivo = input.files?.[0] ?? null;
+    input.value = '';
+    if (archivo && !this.validarFoto(archivo)) return;
+    this.archivoNuevo.set(archivo);
+  }
+
+  subirFoto(producto: Producto, input: HTMLInputElement): void {
+    const archivo = input.files?.[0];
+    input.value = '';
+    if (!archivo || !this.esAdmin() || !this.validarFoto(archivo)) return;
+    this.enviarFoto(producto, archivo);
+  }
+
+  private validarFoto(archivo: File): boolean {
+    if (!archivo.type.startsWith('image/')) {
+      this.error.set('El archivo debe ser una imagen (JPG, PNG o WebP).');
+      return false;
+    }
+    // Límite de multipart del backend: spring.servlet.multipart.max-file-size=10MB
+    if (archivo.size > 10 * 1024 * 1024) {
+      this.error.set('La imagen supera los 10 MB permitidos por el backend.');
+      return false;
+    }
+    return true;
+  }
+
+  private enviarFoto(producto: Producto, archivo: File): void {
+    const id = producto.idProducto;
+    if (id === undefined) return;
+    this.subiendo.set(id);
+    this.error.set(null);
+    this.api.subirImagen(id, archivo).subscribe({
+      next: (actualizado) => {
+        this.productos.update((lista) =>
+          lista.map((p) => (p.idProducto === id ? { ...p, ...actualizado } : p))
+        );
+        this.carrito.sincronizarCatalogo(this.productos());
+        this.mensaje.set(`Foto de "${producto.nombre}" actualizada.`);
+        this.subiendo.set(null);
+        this.avisarTemporal(this.mensaje);
+      },
+      error: (err) => {
+        this.error.set(
+          err?.status === 413
+            ? 'La imagen es demasiado grande para el servidor.'
+            : this.mensajeError(err, `subir la foto de "${producto.nombre}"`)
+        );
+        this.subiendo.set(null);
       },
     });
   }

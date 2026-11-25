@@ -10,6 +10,7 @@ import { RouterLink, ActivatedRoute } from '@angular/router';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { PedidoService } from '../../core/pedido.service';
+import { PagoService } from '../../core/pago.service';
 import { HistorialPedido, EstadoPedido, Pedido } from '../../core/models';
 import { EstadoBadge } from '../../components/ui/estado-badge';
 import { AuthService } from '../../auth/auth.service';
@@ -17,6 +18,7 @@ import { formatearFecha, formatearMoneda } from '../../core/formato';
 import {
   ETAPAS_TRACKER,
   ESTADO_META,
+  esPagable,
   etiquetaEstado,
   siguientesEstados,
 } from '../../core/pedido-estado';
@@ -29,16 +31,18 @@ interface EtapaTracker {
   actual: boolean;
 }
 
+import { Icon } from '../../components/ui/icon';
 @Component({
   selector: 'app-pedido-tracker',
   standalone: true,
-  imports: [RouterLink, EstadoBadge],
+  imports: [RouterLink, EstadoBadge, Icon],
   templateUrl: './pedido-tracker.html',
   styleUrl: './pedido-tracker.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PedidoTrackerComponent implements OnInit {
   private readonly api = inject(PedidoService);
+  private readonly pagos = inject(PagoService);
   private readonly route = inject(ActivatedRoute);
   protected readonly auth = inject(AuthService);
 
@@ -49,6 +53,20 @@ export class PedidoTrackerComponent implements OnInit {
   protected readonly error = signal<string | null>(null);
   protected readonly mensaje = signal<string | null>(null);
   protected readonly actualizando = signal(false);
+  protected readonly pagando = signal(false);
+
+  /** El dueño puede pagar mientras el pedido siga pendiente. */
+  protected readonly puedePagar = computed(() => {
+    const p = this.pedido();
+    const email = this.auth.email();
+    return (
+      !!p &&
+      esPagable(p.estado) &&
+      !!email &&
+      !!p.usuarioEmail &&
+      email.toLowerCase() === p.usuarioEmail.toLowerCase()
+    );
+  });
 
   protected readonly etapas = computed<EtapaTracker[]>(() => {
     const actual = this.pedido()?.estado;
@@ -139,6 +157,25 @@ export class PedidoTrackerComponent implements OnInit {
           err?.error?.detail ?? `No se pudo cambiar el estado: ${err?.message ?? 'error de red'}`
         );
         this.actualizando.set(false);
+      },
+    });
+  }
+
+  pagar(): void {
+    const id = this.idPedido();
+    if (!id || this.pagando()) return;
+    this.pagando.set(true);
+    this.error.set(null);
+    this.pagos.crearPreferencia(id).subscribe({
+      next: (preferencia) => {
+        if (!this.pagos.redirigirAlPago(preferencia)) {
+          this.error.set('El backend no devolvió un link de pago válido.');
+          this.pagando.set(false);
+        }
+      },
+      error: (err) => {
+        this.error.set(this.pagos.mensajeError(err));
+        this.pagando.set(false);
       },
     });
   }

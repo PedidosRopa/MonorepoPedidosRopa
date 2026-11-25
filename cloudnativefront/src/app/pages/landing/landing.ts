@@ -12,11 +12,13 @@ import { CarritoService } from '../../core/carrito.service';
 import { AuthService } from '../../auth/auth.service';
 import { Producto } from '../../core/models';
 import { formatearMoneda } from '../../core/formato';
+import { Icon } from '../../components/ui/icon';
+import { ProductoMedia } from '../../components/ui/producto-media';
 
 @Component({
   selector: 'app-landing',
   standalone: true,
-  imports: [RouterLink],
+  imports: [RouterLink, Icon, ProductoMedia],
   templateUrl: './landing.html',
   styleUrl: './landing.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -31,6 +33,24 @@ export class LandingComponent implements OnInit {
   protected readonly error = signal<string | null>(null);
   protected readonly mensaje = signal<string | null>(null);
   protected readonly destacados = computed(() => this.productos().slice(0, 8));
+
+  /** Categorías únicas del catálogo (sin distinguir mayúsculas). */
+  protected readonly categorias = computed(() => {
+    const vistas = new Map<string, string>();
+    for (const p of this.productos()) {
+      const cat = p.categoria?.trim();
+      if (cat && !vistas.has(cat.toLowerCase())) vistas.set(cat.toLowerCase(), cat);
+    }
+    return Array.from(vistas.values());
+  });
+
+  /** Repite las categorías para que la cinta siempre llene el ancho de pantalla. */
+  protected readonly cintaCategorias = computed(() => {
+    const base = this.categorias();
+    if (!base.length) return [];
+    const repeticiones = Math.max(1, Math.ceil(8 / base.length));
+    return Array.from({ length: repeticiones }, () => base).flat();
+  });
 
   private temporizador: ReturnType<typeof setTimeout> | null = null;
 

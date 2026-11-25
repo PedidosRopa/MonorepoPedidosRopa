@@ -99,5 +99,18 @@ export const routes: Routes = [
     data: { role: 'REPARTIDOR' },
   },
 
+  // Vuelta desde Mercado Pago (back_urls definidas en el backend: FRONTEND_URL + /pago-*).
+  // También se aceptan bajo /productos por si FRONTEND_URL quedó con el valor por defecto
+  // del backend (que termina en /productos).
+  ...(['', 'productos/'] as const).flatMap((prefijo) =>
+    (['exitoso', 'fallido', 'pendiente'] as const).map((resultado) => ({
+      path: `${prefijo}pago-${resultado}`,
+      title: 'PedidosRopa · Pago',
+      loadComponent: () =>
+        import('./pages/pago-resultado/pago-resultado').then((m) => m.PagoResultadoComponent),
+      data: { resultado },
+    }))
+  ),
+
   { path: '**', redirectTo: 'landing' },
 ];

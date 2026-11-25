@@ -8,10 +8,12 @@ import { formatearMoneda } from '../../../core/formato';
  * Sidebar global del carrito. Lee y escribe el estado compartido de
  * CarritoService, por lo que el botón del navbar siempre lo abre.
  */
+import { Icon } from '../icon';
+import { ProductoMedia } from '../producto-media';
 @Component({
   selector: 'app-cart-sidebar',
   standalone: true,
-  imports: [],
+  imports: [Icon, ProductoMedia],
   templateUrl: './cart-sidebar.html',
   styleUrl: './cart-sidebar.css',
   changeDetection: ChangeDetectionStrategy.OnPush,

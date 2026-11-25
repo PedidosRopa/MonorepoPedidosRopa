@@ -1,1 +1,22 @@
 /* El estilo global vive en src/styles.css (Tailwind v4). */
+
+/* Entrada del panel: deslizamiento desde la derecha (solo transform/opacity). */
+.carrito-fondo {
+  animation: carrito-fade 0.2s ease-out both;
+}
+
+.carrito-panel {
+  animation: carrito-entrar 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes carrito-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes carrito-entrar {
+  from {
+    transform: translateX(100%);
+  }
+}

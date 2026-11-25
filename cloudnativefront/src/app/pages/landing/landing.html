@@ -1,47 +1,85 @@
-<section class="flex min-h-[70vh] flex-col">
+<section class="-mx-4">
   <!-- Hero -->
-  <div class="hero-surface relative flex flex-1 flex-col items-center justify-center px-4 py-16 text-center">
-    <span class="mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-slate-300">
-      <span class="h-2 w-2 rounded-full bg-emerald-400" aria-hidden="true"></span>
-      Sistema de pedidos en línea
-    </span>
+  <div class="hero-surface relative overflow-hidden px-4 pb-12 pt-8 md:pb-20 md:pt-16">
+    <div class="mx-auto grid max-w-6xl items-center gap-6 md:grid-cols-[1.15fr_1fr] md:gap-10">
+      <div class="text-center md:text-left">
+        <h1 class="font-display text-5xl font-bold leading-[1.02] text-white md:text-7xl">
+          Ropa que se
+          <span class="title-grad block">siente tuya.</span>
+        </h1>
 
-    <h1 class="title-grad font-display text-4xl font-bold leading-tight md:text-6xl">
-      Pedidos de ropa<br />
-      <span class="text-slate-100">directo a tu puerta</span>
-    </h1>
+        <p class="mx-auto mt-6 max-w-lg text-base leading-relaxed text-slate-300 md:mx-0 md:text-lg">
+          Elige tus prendas, paga con Mercado Pago y sigue tu pedido desde la bodega hasta tu puerta.
+        </p>
 
-    <p class="mx-auto mt-5 max-w-2xl text-base leading-relaxed text-slate-400 md:text-lg">
-      Explora el catálogo, arma tu carrito y sigue el estado de tu pedido en cada etapa:
-      preparación, envío y entrega.
-    </p>
+        <div class="mt-8 flex flex-col justify-center gap-3 sm:flex-row md:justify-start">
+          <a routerLink="/productos" class="btn-grad px-7 py-3 text-base">
+            Ver catálogo
+            <app-icon nombre="flecha" [tamano]="18" />
+          </a>
+          @if (!auth.isLoggedIn()) {
+            <button class="btn-ghost px-7 py-3 text-base" (click)="login()">Iniciar sesión</button>
+          } @else {
+            <a routerLink="/pedidos" class="btn-ghost px-7 py-3 text-base">
+              {{ auth.isStaff() ? 'Ver pedidos' : 'Mis pedidos' }}
+            </a>
+          }
+        </div>
 
-    <div class="mt-8 flex flex-col gap-3 sm:flex-row">
-      @if (!auth.isLoggedIn()) {
-        <button class="btn-grad px-6 py-3 text-base" (click)="login()">Iniciar sesión con Microsoft</button>
-      } @else {
-        <a routerLink="/pedidos" class="btn-grad px-6 py-3 text-base">
-          {{ auth.isStaff() ? 'Ver pedidos' : 'Ver mis pedidos' }}
-        </a>
-      }
-      <a routerLink="/productos" class="btn-ghost px-6 py-3 text-base">Ver catálogo</a>
-      @if (auth.isAdmin()) {
-        <a routerLink="/admin" class="btn-ghost px-6 py-3 text-base">Panel admin</a>
-      }
+        @if (auth.isLoggedIn()) {
+          <p class="mt-4 text-xs text-slate-500">Hola, {{ auth.username() }}</p>
+        }
+      </div>
+
+      <div class="relative order-first mx-auto w-36 sm:w-48 md:order-none md:w-full md:max-w-sm">
+        <div class="absolute inset-[12%] rounded-full bg-marca-500/30 blur-3xl" aria-hidden="true"></div>
+        <img
+          src="logo.svg"
+          alt="Logo de PedidosRopa"
+          width="820"
+          height="1165"
+          class="relative w-full animate-flotar drop-shadow-[0_20px_40px_rgb(94_23_235/0.35)]"
+          fetchpriority="high"
+          decoding="async"
+        />
+      </div>
     </div>
-
-    @if (auth.isLoggedIn()) {
-      <p class="mt-4 text-xs text-slate-500">Sesión activa como {{ auth.username() }}</p>
-    }
   </div>
 
-  <!-- Catálogo destacado -->
-  <div class="border-y border-white/5 bg-nebula-900/40 py-12">
-    <div class="mx-auto max-w-6xl px-4">
-      <div class="mb-6 flex items-center justify-between gap-3">
-        <h2 class="title-grad font-display text-2xl font-bold">Productos destacados</h2>
-        <a routerLink="/productos" class="text-sm font-semibold text-violet-400 transition hover:text-violet-300">
-          Ver todos →
+  <!-- Cinta de categorías -->
+  @if (categorias().length) {
+    <div class="marquesina border-y border-white/10 bg-linear-to-r from-marca-500/15 via-orquidea-500/10 to-marca-500/15 py-3">
+      <div class="marquesina-pista animate-marquesina">
+        @for (vuelta of [0, 1]; track vuelta) {
+          <div class="flex shrink-0 items-center" [attr.aria-hidden]="vuelta === 1 ? 'true' : null">
+            @for (cat of cintaCategorias(); track $index) {
+              <a
+                [routerLink]="['/productos']"
+                [queryParams]="{ categoria: cat }"
+                [attr.tabindex]="vuelta === 1 ? -1 : null"
+                class="flex items-center gap-6 px-6 font-display text-lg font-semibold uppercase tracking-wider text-orquidea-300 transition hover:text-white"
+              >
+                {{ cat }}
+                <app-icon nombre="estrella" [tamano]="14" class="text-chicle-300/70" />
+              </a>
+            }
+          </div>
+        }
+      </div>
+    </div>
+  }
+
+  <!-- Destacados -->
+  <div class="px-4 py-14">
+    <div class="mx-auto max-w-6xl">
+      <div class="mb-7 flex items-end justify-between gap-3">
+        <div>
+          <p class="font-display text-sm font-semibold uppercase tracking-widest text-orquidea-300/80">Lo nuevo</p>
+          <h2 class="font-display text-3xl font-bold text-white md:text-4xl">Destacados</h2>
+        </div>
+        <a routerLink="/productos" class="group flex items-center gap-1.5 font-display text-sm font-semibold text-orquidea-300 transition hover:text-white">
+          Ver todo
+          <app-icon nombre="flecha" [tamano]="16" class="transition-transform group-hover:translate-x-1" />
         </a>
       </div>
 
@@ -56,41 +94,44 @@
       }
 
       @if (loading()) {
-        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
           @for (i of [1, 2, 3, 4]; track i) {
-            <div class="glass h-72 animate-pulse"></div>
+            <div class="glass aspect-[4/6] animate-pulse"></div>
           }
         </div>
       } @else {
-        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div class="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
           @for (p of destacados(); track p.idProducto) {
-            <article class="glass flex flex-col p-3">
-              <div class="relative mb-3 aspect-[4/5] overflow-hidden rounded-lg border border-white/10 bg-white/5">
-                @if (p.imagenUrl) {
-                  <img [src]="p.imagenUrl" [alt]="p.nombre" class="h-full w-full object-cover" loading="lazy" decoding="async" />
-                } @else {
-                  <div class="flex h-full w-full items-center justify-center font-display text-xl font-bold text-slate-600">
-                    {{ (p.nombre.charAt(0) || '?') }}{{ (p.nombre.charAt(1) || '?') }}
-                  </div>
-                }
+            <article class="card-producto revelar overflow-hidden">
+              <div class="relative aspect-[4/5]">
+                <app-producto-media [src]="p.imagenUrl" [alt]="p.nombre" [categoria]="p.categoria" />
                 @if (unidadesEnCarrito(p.idProducto) > 0) {
-                  <span class="absolute right-2 top-2 rounded-full bg-violet-600 px-2 py-0.5 text-[11px] font-bold text-white">
-                    {{ unidadesEnCarrito(p.idProducto) }}
+                  <span class="absolute right-2 top-2 rounded-full bg-chicle-300 px-2 py-0.5 text-[11px] font-extrabold text-nebula-950">
+                    {{ unidadesEnCarrito(p.idProducto) }} en carrito
+                  </span>
+                }
+                @if (p.stock <= 0) {
+                  <span class="absolute inset-0 flex items-center justify-center bg-black/60 font-display text-sm font-bold uppercase tracking-widest text-white">
+                    Agotado
                   </span>
                 }
               </div>
-              <h3 class="font-display text-base font-semibold text-white">{{ p.nombre }}</h3>
-              <p class="mb-3 line-clamp-1 text-xs text-slate-500">{{ p.categoria }} · Talla {{ p.talla }}</p>
-              <div class="mt-auto flex items-center justify-between gap-2">
-                <span class="title-grad font-display text-lg font-bold">{{ precio(p.precio) }}</span>
-                <button
-                  type="button"
-                  class="btn-grad px-3 py-1.5 text-xs"
-                  (click)="agregarAlCarrito(p)"
-                  [disabled]="p.stock <= 0"
-                >
-                  {{ p.stock <= 0 ? 'Agotado' : 'Agregar' }}
-                </button>
+              <div class="flex flex-1 flex-col p-3 sm:p-4">
+                <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-500">{{ p.categoria }} · {{ p.talla }}</p>
+                <h3 class="mt-0.5 line-clamp-1 font-display text-base font-semibold text-white">{{ p.nombre }}</h3>
+                <div class="mt-3 flex items-center justify-between gap-2">
+                  <span class="font-display text-lg font-bold text-chicle-300">{{ precio(p.precio) }}</span>
+                  <button
+                    type="button"
+                    class="btn-grad h-9 w-9 rounded-full p-0"
+                    (click)="agregarAlCarrito(p)"
+                    [disabled]="p.stock <= 0"
+                    [attr.aria-label]="'Agregar ' + p.nombre + ' al carrito'"
+                    title="Agregar al carrito"
+                  >
+                    <app-icon nombre="mas" [tamano]="18" [grosor]="2.4" />
+                  </button>
+                </div>
               </div>
             </article>
           } @empty {
@@ -98,30 +139,6 @@
           }
         </div>
       }
-    </div>
-  </div>
-
-  <!-- Pasos -->
-  <div class="py-12">
-    <div class="mx-auto max-w-6xl px-4">
-      <h2 class="title-grad font-display mb-8 text-center text-2xl font-bold">Cómo funciona</h2>
-      <div class="grid gap-4 text-center md:grid-cols-3">
-        <div class="glass p-6">
-          <div class="mx-auto mb-4 flex h-10 w-10 items-center justify-center rounded-full bg-violet-600/20 font-display text-lg font-bold text-violet-300">1</div>
-          <h3 class="mb-2 font-semibold text-white">Elige tus prendas</h3>
-          <p class="text-sm text-slate-400">Filtra por categoría y talla, y agrega al carrito.</p>
-        </div>
-        <div class="glass p-6">
-          <div class="mx-auto mb-4 flex h-10 w-10 items-center justify-center rounded-full bg-blue-600/20 font-display text-lg font-bold text-blue-300">2</div>
-          <h3 class="mb-2 font-semibold text-white">Confirma el pedido</h3>
-          <p class="text-sm text-slate-400">Inicia sesión con Microsoft y revisa el resumen.</p>
-        </div>
-        <div class="glass p-6">
-          <div class="mx-auto mb-4 flex h-10 w-10 items-center justify-center rounded-full bg-indigo-600/20 font-display text-lg font-bold text-indigo-300">3</div>
-          <h3 class="mb-2 font-semibold text-white">Sigue el estado</h3>
-          <p class="text-sm text-slate-400">Consulta el tracker con cada cambio de estado.</p>
-        </div>
-      </div>
     </div>
   </div>
 </section>

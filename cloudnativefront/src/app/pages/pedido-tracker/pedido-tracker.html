@@ -60,6 +60,15 @@
         }
       </div>
 
+      @if (puedePagar()) {
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-sky-400/30 bg-sky-500/10 px-4 py-3">
+          <p class="text-sm text-sky-100">Este pedido está pendiente de pago.</p>
+          <button type="button" class="btn-grad text-sm" (click)="pagar()" [disabled]="pagando()">
+            {{ pagando() ? 'Redirigiendo…' : 'Pagar con Mercado Pago' }}
+          </button>
+        </div>
+      }
+
       <!-- Progreso -->
       @if (cancelado()) {
         <div class="mb-4 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-4 text-sm text-rose-200">
@@ -71,7 +80,7 @@
       } @else {
         <div class="glass mb-4 p-4">
           <p class="mb-4 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Etapa actual</p>
-          <ol class="grid gap-2 sm:grid-cols-3 lg:grid-cols-6">
+          <ol class="grid gap-2 sm:grid-cols-3 lg:grid-cols-7">
             @for (etapa of etapas(); track etapa.estado) {
               <li
                 class="rounded-xl border px-3 py-2"
@@ -83,7 +92,11 @@
               >
                 <p class="flex items-center gap-1.5 text-xs font-semibold"
                    [class]="etapa.actual ? 'text-violet-100' : etapa.completada ? 'text-emerald-200' : 'text-slate-400'">
-                  <span aria-hidden="true">{{ etapa.completada ? '✓' : etapa.actual ? '●' : '○' }}</span>
+                  @if (etapa.completada) {
+                    <app-icon nombre="check" [tamano]="13" [grosor]="2.6" />
+                  } @else {
+                    <span class="h-2 w-2 rounded-full" [class]="etapa.actual ? 'bg-chicle-300 animate-pulse' : 'border border-slate-500'" aria-hidden="true"></span>
+                  }
                   {{ etapa.label }}
                 </p>
                 <p class="mt-0.5 text-[10px] leading-tight text-slate-500">{{ etapa.descripcion }}</p>
@@ -137,7 +150,7 @@
               <span class="font-mono text-xs text-slate-500">{{ fecha(h.fechaCambio) }}</span>
               <span class="text-slate-400">
                 {{ etiqueta(h.estadoAnterior) }}
-                <span class="mx-1 text-slate-600">→</span>
+                <app-icon nombre="flecha" [tamano]="12" class="mx-1 align-middle text-slate-600" />
                 <span class="font-semibold text-slate-200">{{ etiqueta(h.estadoNuevo) }}</span>
               </span>
               <span class="ml-auto text-xs text-slate-500">{{ h.actualizadoPorEmail || 'Sistema' }}</span>

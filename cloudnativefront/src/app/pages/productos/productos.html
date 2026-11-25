@@ -1,10 +1,8 @@
 <section class="py-8">
   <header class="mb-6 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
     <div>
-      <h1 class="title-grad text-3xl font-bold md:text-4xl">Catálogo</h1>
-      <p class="mt-1 text-sm text-slate-400">
-        Explora las prendas disponibles y agrégalas al carrito.
-      </p>
+      <p class="font-display text-sm font-semibold uppercase tracking-widest text-orquidea-300/80">Tienda</p>
+      <h1 class="font-display text-4xl font-bold text-white md:text-5xl">Catálogo</h1>
     </div>
 
     @if (auth.isAdmin()) {
@@ -15,7 +13,9 @@
   @if (error()) {
     <div class="mb-5 flex items-start justify-between gap-3 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
       <p>{{ error() }}</p>
-      <button type="button" class="shrink-0 text-rose-300 hover:text-white" (click)="error.set(null)" aria-label="Cerrar aviso">✕</button>
+      <button type="button" class="shrink-0 text-rose-300 hover:text-white" (click)="error.set(null)" aria-label="Cerrar aviso">
+        <app-icon nombre="x" [tamano]="16" />
+      </button>
     </div>
   }
   @if (mensaje()) {
@@ -25,15 +25,38 @@
   <!-- Crear producto: solo ADMINISTRADOR. Plegado para no molestar al cliente. -->
   @if (esAdmin()) {
     <details class="glass mb-6 p-4">
-      <summary class="cursor-pointer select-none font-semibold text-white">➕ Nuevo producto (admin)</summary>
+      <summary class="flex cursor-pointer select-none items-center gap-2 font-display font-semibold text-white">
+        <app-icon nombre="mas" [tamano]="18" class="text-orquidea-300" />
+        Nuevo producto
+      </summary>
       <form class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4" (ngSubmit)="crear()">
         <input class="input-neon" [(ngModel)]="nombre" name="nombre" placeholder="Nombre *" required />
         <input class="input-neon" [(ngModel)]="categoria" name="categoria" placeholder="Categoría *" required />
         <input class="input-neon" [(ngModel)]="talla" name="talla" placeholder="Talla *" required />
         <input class="input-neon" [(ngModel)]="genero" name="genero" placeholder="Género (opcional)" />
         <input class="input-neon sm:col-span-2" [(ngModel)]="descripcion" name="descripcion" placeholder="Descripción" />
-        <input class="input-neon" [(ngModel)]="precio" name="precio" type="number" step="0.01" min="0" placeholder="Precio *" required />
+        <input class="input-neon" [(ngModel)]="precio" name="precio" type="number" step="1" min="0" placeholder="Precio *" required />
         <input class="input-neon" [(ngModel)]="stock" name="stock" type="number" min="0" placeholder="Stock *" required />
+
+        <label class="flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-orquidea-500/40 bg-marca-500/5 px-4 py-3 text-sm text-slate-300 transition hover:border-orquidea-300 sm:col-span-2 lg:col-span-4">
+          <app-icon nombre="imagen" [tamano]="20" class="text-orquidea-300" />
+          <span class="flex-1 truncate">
+            {{ archivoNuevo()?.name ?? 'Foto del producto (opcional, JPG/PNG/WebP, máx. 10 MB)' }}
+          </span>
+          @if (archivoNuevo()) {
+            <button type="button" class="text-xs font-semibold text-rose-300 hover:text-rose-200" (click)="$event.preventDefault(); archivoNuevo.set(null)">
+              Quitar
+            </button>
+          }
+          <input
+            #inputNuevo
+            type="file"
+            accept="image/*"
+            class="sr-only"
+            (change)="elegirArchivoNuevo(inputNuevo)"
+          />
+        </label>
+
         <div class="flex gap-3 sm:col-span-2 lg:col-span-4">
           <button class="btn-grad" type="submit" [disabled]="creando()">
             {{ creando() ? 'Creando…' : 'Crear producto' }}
@@ -41,111 +64,111 @@
           <button class="btn-ghost" type="button" (click)="cargar()">Recargar</button>
         </div>
       </form>
-      <p class="mt-3 text-xs text-slate-500">
-        Las imágenes se suben por separado con <code>POST /api/productos/{{ '{' }}id{{ '}' }}/imagen</code>.
-        El backend actualmente no devuelve <code>imagenUrl</code> en el catálogo.
-      </p>
     </details>
   }
 
   <!-- Filtros -->
-  <form class="mb-6 flex flex-wrap gap-2" (ngSubmit)="cargar()">
-    <input class="input-neon flex-1 sm:max-w-56" [(ngModel)]="filtroCategoria" name="filtroCategoria" placeholder="Categoría" />
-    <input class="input-neon flex-1 sm:max-w-56" [(ngModel)]="filtroTalla" name="filtroTalla" placeholder="Talla" />
+  <form class="mb-6 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap" (ngSubmit)="cargar()">
+    <input class="input-neon sm:max-w-56" [(ngModel)]="filtroCategoria" name="filtroCategoria" placeholder="Categoría" />
+    <input class="input-neon sm:max-w-56" [(ngModel)]="filtroTalla" name="filtroTalla" placeholder="Talla" />
     <button class="btn-ghost" type="submit">Filtrar</button>
     <button class="btn-ghost" type="button" (click)="limpiarFiltros()">Limpiar</button>
   </form>
 
   @if (loading()) {
-    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+    <div class="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
       @for (i of [1, 2, 3, 4, 5, 6, 7, 8]; track i) {
-        <div class="glass h-80 animate-pulse p-4"></div>
+        <div class="glass aspect-[4/6] animate-pulse"></div>
       }
     </div>
   } @else {
-    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+    <div class="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
       @for (p of productos(); track p.idProducto) {
-        <article class="glass flex flex-col gap-3 p-4">
-          <div class="relative aspect-[4/5] w-full overflow-hidden rounded-xl border border-white/10 bg-white/5">
-            @if (p.imagenUrl) {
-              <img
-                [src]="p.imagenUrl"
-                [alt]="p.nombre"
-                class="h-full w-full object-cover"
-                loading="lazy"
-                decoding="async"
-              />
-            } @else {
-              <div class="flex h-full w-full items-center justify-center font-display text-2xl font-bold text-slate-600">
-                {{ (p.nombre.charAt(0) || '?') }}{{ (p.nombre.charAt(1) || '?') }}
-              </div>
-            }
+        <article class="card-producto revelar overflow-hidden">
+          <div class="relative aspect-[4/5] w-full">
+            <app-producto-media [src]="p.imagenUrl" [alt]="p.nombre" [categoria]="p.categoria" />
 
             @if (p.stock <= 0) {
-              <span class="absolute inset-0 flex items-center justify-center bg-black/60 text-sm font-bold uppercase tracking-wide text-white">
+              <span class="absolute inset-0 flex items-center justify-center bg-black/60 font-display text-sm font-bold uppercase tracking-widest text-white">
                 Agotado
               </span>
             }
             @if (unidadesEnCarrito(p.idProducto) > 0) {
-              <span class="absolute right-2 top-2 rounded-full bg-violet-600 px-2 py-0.5 text-[11px] font-bold text-white">
+              <span class="absolute right-2 top-2 rounded-full bg-chicle-300 px-2 py-0.5 text-[11px] font-extrabold text-nebula-950">
                 {{ unidadesEnCarrito(p.idProducto) }} en carrito
               </span>
             }
+            @if (esAdmin()) {
+              <label
+                class="absolute bottom-2 left-2 flex cursor-pointer items-center gap-1.5 rounded-full bg-nebula-950/85 px-2.5 py-1 text-[11px] font-semibold text-white ring-1 ring-white/15 transition hover:bg-marca-500"
+                [class.pointer-events-none]="subiendo() === p.idProducto"
+              >
+                <app-icon nombre="subir" [tamano]="13" [grosor]="2.2" />
+                {{ subiendo() === p.idProducto ? 'Subiendo…' : p.imagenUrl ? 'Cambiar foto' : 'Subir foto' }}
+                <input #inputFoto type="file" accept="image/*" class="sr-only" (change)="subirFoto(p, inputFoto)" />
+              </label>
+            }
           </div>
 
-          <div class="flex-1">
+          <div class="flex flex-1 flex-col gap-2 p-3 sm:p-4">
             <div class="flex items-start justify-between gap-2">
               <h2 class="font-display text-base font-semibold leading-snug text-white">{{ p.nombre }}</h2>
-              <span class="shrink-0 text-xs text-slate-500">#{{ p.idProducto }}</span>
-            </div>
-            <p class="mt-1 line-clamp-2 text-xs text-slate-400">{{ p.descripcion || 'Sin descripción' }}</p>
-
-            <div class="mt-2 flex flex-wrap gap-1.5">
-              <span class="rounded-full border border-violet-400/30 bg-violet-500/10 px-2 py-0.5 text-[11px] text-violet-200">{{ p.categoria }}</span>
-              <span class="rounded-full border border-blue-400/30 bg-blue-500/10 px-2 py-0.5 text-[11px] text-blue-200">Talla {{ p.talla }}</span>
-              @if (p.genero) {
-                <span class="rounded-full border border-indigo-400/30 bg-indigo-500/10 px-2 py-0.5 text-[11px] text-indigo-200">{{ p.genero }}</span>
+              @if (esAdmin()) {
+                <span class="shrink-0 text-xs text-slate-500">#{{ p.idProducto }}</span>
               }
             </div>
-          </div>
+            <p class="line-clamp-2 text-xs text-slate-400">{{ p.descripcion || 'Sin descripción' }}</p>
 
-          <div class="flex items-end justify-between gap-2 border-t border-white/5 pt-3">
-            <div>
-              <p class="text-[11px] text-slate-500">Stock: {{ p.stock }}</p>
-              <p class="title-grad font-display text-xl font-bold">{{ formatearPrecio(p.precio) }}</p>
+            <div class="flex flex-wrap gap-1.5">
+              <span class="chip">{{ p.categoria }}</span>
+              <span class="chip">Talla {{ p.talla }}</span>
+              @if (p.genero) {
+                <span class="chip">{{ p.genero }}</span>
+              }
             </div>
-            <button
-              type="button"
-              class="btn-grad px-3 py-2 text-xs"
-              (click)="agregarAlCarrito(p)"
-              [disabled]="p.stock <= 0"
-            >
-              Agregar
-            </button>
-          </div>
 
-          @if (esAdmin()) {
-            <div class="flex items-center justify-between gap-2 border-t border-white/5 pt-2">
-              <span class="text-[11px] text-slate-500">
-                @if (cargandoReferencias()) {
-                  Revisando pedidos…
-                } @else if (tienePedidos(p.idProducto)) {
-                  Tiene pedidos asociados
-                } @else {
-                  Sin pedidos asociados
-                }
-              </span>
+            <div class="mt-auto flex flex-col gap-2 border-t border-white/5 pt-3 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p class="text-[11px] text-slate-500">
+                  {{ p.stock > 0 ? (p.stock <= 5 ? '¡Quedan ' + p.stock + '!' : p.stock + ' disponibles') : 'Sin stock' }}
+                </p>
+                <p class="font-display text-xl font-bold text-chicle-300">{{ formatearPrecio(p.precio) }}</p>
+              </div>
               <button
                 type="button"
-                class="rounded-lg border border-rose-500/30 bg-rose-500/10 px-2.5 py-1 text-xs font-semibold text-rose-200 transition hover:bg-rose-500/20 disabled:cursor-not-allowed disabled:opacity-40"
-                (click)="eliminar(p)"
-                [disabled]="tienePedidos(p.idProducto)"
-                [title]="tienePedidos(p.idProducto) ? 'El backend no permite borrar productos con pedidos (FK).' : 'Eliminar producto'"
+                class="btn-grad w-full px-3 py-2 text-xs sm:w-auto"
+                (click)="agregarAlCarrito(p)"
+                [disabled]="p.stock <= 0"
               >
-                Eliminar
+                <app-icon nombre="mas" [tamano]="14" [grosor]="2.4" />
+                Agregar
               </button>
             </div>
-          }
+
+            @if (esAdmin()) {
+              <div class="flex items-center justify-between gap-2 border-t border-white/5 pt-2">
+                <span class="text-[11px] text-slate-500">
+                  @if (cargandoReferencias()) {
+                    Revisando pedidos…
+                  } @else if (tienePedidos(p.idProducto)) {
+                    Tiene pedidos asociados
+                  } @else {
+                    Sin pedidos asociados
+                  }
+                </span>
+                <button
+                  type="button"
+                  class="flex items-center gap-1 rounded-lg border border-rose-500/30 bg-rose-500/10 px-2.5 py-1 text-xs font-semibold text-rose-200 transition hover:bg-rose-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+                  (click)="eliminar(p)"
+                  [disabled]="tienePedidos(p.idProducto)"
+                  [title]="tienePedidos(p.idProducto) ? 'El backend no permite borrar productos con pedidos (FK).' : 'Eliminar producto'"
+                >
+                  <app-icon nombre="basura" [tamano]="13" />
+                  Eliminar
+                </button>
+              </div>
+            }
+          </div>
         </article>
       } @empty {
         <div class="col-span-full rounded-2xl border border-white/10 bg-white/5 px-4 py-12 text-center text-slate-400">

@@ -57,6 +57,8 @@ export function msalInterceptorConfigFactory(): MsalInterceptorConfiguration {
   protectedResourceMap.set(`${environment.apiBaseUrl}/api/pedidos/*`, apiScopes);
   protectedResourceMap.set(`${environment.apiBaseUrl}/api/carrito`, apiScopes);
   protectedResourceMap.set(`${environment.apiBaseUrl}/api/carrito/*`, apiScopes);
+  protectedResourceMap.set(`${environment.apiBaseUrl}/api/pagos/*`, apiScopes);
+  protectedResourceMap.set(`${environment.apiBaseUrl}/api/pagos/**`, apiScopes);
   protectedResourceMap.set(`${environment.apiBaseUrl}/api/admin`, apiScopes);
   protectedResourceMap.set(`${environment.apiBaseUrl}/api/admin/*`, apiScopes);
 
