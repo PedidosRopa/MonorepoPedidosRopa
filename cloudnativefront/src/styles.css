@@ -1,42 +1,19 @@
 /* ============================================================
-   PedidosRopa — Design system "Aurora Nebular" (Tailwind CSS v4)
-   Paleta morada/azul, glassmorphism, glows neón, dark-first.
+   PedidosRopa — estilos globales (Tailwind CSS v4)
+   Versión aligerada: sin blur, sin animaciones de fondo y sin
+   fuentes externas para priorizar velocidad en instancias EC2.
    ============================================================ */
 @import "tailwindcss";
 
 @theme {
-  --font-display: "Space Grotesk", "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: ui-sans-serif, system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-sans: ui-sans-serif, system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 
-  /* Fondo "nebulosa" profunda (morado oscuro → índigo) */
+  /* Fondo nebulosa profunda (morado oscuro → índigo) */
   --color-nebula-950: #0b0716;
   --color-nebula-900: #17102b;
   --color-nebula-800: #21184a;
   --color-nebula-700: #2b2054;
-
-  /* Sombras neón */
-  --shadow-glow-purple: 0 0 24px 2px rgb(139 92 246 / 0.35);
-  --shadow-glow-blue: 0 0 24px 2px rgb(59 130 246 / 0.35);
-  --shadow-glow-mixed:
-    0 8px 40px -8px rgb(124 58 237 / 0.45),
-    0 8px 40px -12px rgb(59 130 246 / 0.3);
-
-  /* Animaciones de la aurora */
-  --animate-float-slow: aurora-float 18s ease-in-out infinite;
-  --animate-float-slower: aurora-float 26s ease-in-out infinite reverse;
-
-  @keyframes aurora-float {
-    0%,
-    100% {
-      transform: translate3d(0, 0, 0) scale(1);
-    }
-    33% {
-      transform: translate3d(6rem, -4rem, 0) scale(1.15);
-    }
-    66% {
-      transform: translate3d(-5rem, 3rem, 0) scale(0.95);
-    }
-  }
 }
 
 @layer base {
@@ -46,73 +23,80 @@
 
   body {
     @apply bg-nebula-950 font-sans text-slate-100 antialiased;
+    /* Un único gradiente estático: se pinta una vez y no repinta al hacer scroll. */
+    background-image:
+      radial-gradient(circle at 15% 0%, rgb(124 58 237 / 0.16), transparent 45%),
+      radial-gradient(circle at 85% 10%, rgb(37 99 235 / 0.12), transparent 40%);
+    background-repeat: no-repeat;
   }
 
   ::selection {
     @apply bg-violet-500/40;
   }
+
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-violet-400;
+  }
+
+  img {
+    @apply max-w-full;
+  }
 }
 
 @layer components {
-  /* Panel de vidrio (glassmorphism) */
+  /* Panel de vidrio sin backdrop-filter (mucho más barato de renderizar). */
   .glass {
-    @apply rounded-2xl border border-white/10 bg-white/5 shadow-glow-mixed backdrop-blur-xl;
+    @apply rounded-2xl border border-white/10 bg-white/5;
   }
 
   .glass-hover {
-    @apply transition-colors hover:border-violet-400/40 hover:shadow-glow-purple;
+    @apply transition-colors hover:border-violet-400/40;
   }
 
-  /* Botones */
   .btn-grad {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 font-semibold text-white transition-all
-      bg-linear-to-r from-violet-600 via-indigo-600 to-blue-600 shadow-glow-purple
-      hover:brightness-110 hover:shadow-glow-blue disabled:pointer-events-none disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 font-semibold text-white transition-colors
+      bg-linear-to-r from-violet-600 via-indigo-600 to-blue-600
+      hover:brightness-110 disabled:pointer-events-none disabled:opacity-50;
   }
 
   .btn-ghost {
     @apply inline-flex items-center justify-center gap-2 rounded-xl border border-violet-400/30 bg-violet-500/10
-      px-5 py-2.5 font-semibold text-violet-200 transition-all hover:border-violet-300/50 hover:bg-violet-500/20
+      px-5 py-2.5 font-semibold text-violet-200 transition-colors hover:border-violet-300/50 hover:bg-violet-500/20
       disabled:pointer-events-none disabled:opacity-50;
   }
 
   .btn-danger {
     @apply inline-flex items-center justify-center gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10
-      px-5 py-2.5 font-semibold text-rose-200 transition-all hover:border-rose-400/60 hover:bg-rose-500/20
+      px-5 py-2.5 font-semibold text-rose-200 transition-colors hover:border-rose-400/60 hover:bg-rose-500/20
       disabled:pointer-events-none disabled:opacity-50;
   }
 
-  /* Inputs con foco luminoso */
   .input-neon {
     @apply w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-slate-100 transition
       placeholder:text-slate-500 focus:border-violet-400/60 focus:outline-none focus:ring-2 focus:ring-violet-500/30;
   }
 
-  /* Título con gradiente */
   .title-grad {
     @apply bg-linear-to-r from-violet-400 via-indigo-400 to-blue-400 bg-clip-text font-display text-transparent;
   }
 
-  /* Nav del navbar (usado con routerLinkActive) */
   .nav-link {
-    @apply relative rounded-lg px-3 py-1.5 text-sm font-medium text-slate-400 transition-colors hover:text-white;
+    @apply relative rounded-lg px-3 py-1.5 text-sm font-medium text-slate-400 transition-colors hover:bg-white/5 hover:text-white;
   }
 
   .nav-link.link-active {
-    @apply text-white;
+    @apply bg-white/5 text-white;
   }
 
   .nav-link.link-active::after {
     content: "";
-    @apply absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-linear-to-r from-violet-500 to-blue-500 shadow-glow-purple;
+    @apply absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-linear-to-r from-violet-500 to-blue-500;
   }
 }
 
-/* Textura de rejilla sutil para el fondo aurora */
-@utility bg-grid {
+/* Fondo del hero, estático y sin capas animadas. */
+.hero-surface {
   background-image:
-    linear-gradient(to right, rgb(255 255 255 / 0.035) 1px, transparent 1px),
-    linear-gradient(to bottom, rgb(255 255 255 / 0.035) 1px, transparent 1px);
-  background-size: 44px 44px;
-  mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 40%, transparent 100%);
+    radial-gradient(ellipse at 50% 0%, rgb(124 58 237 / 0.22), transparent 60%),
+    linear-gradient(160deg, #17102b 0%, #0b0716 60%);
 }

@@ -49,7 +49,7 @@ export function msalGuardConfigFactory(): MsalGuardConfiguration {
 }
 
 export function msalInterceptorConfigFactory(): MsalInterceptorConfiguration {
-  const protectedResourceMap = new Map<string, Array<string> | null>();
+  const protectedResourceMap = new Map<string, Array<string | { httpMethod: string; scopes: string[] }> | null>();
   const apiScopes = [...environment.azure.apiScopes];
 
   // Rutas protegidas completas (con y sin /* para cubrir rutas raíz como GET /api/pedidos)
@@ -59,6 +59,16 @@ export function msalInterceptorConfigFactory(): MsalInterceptorConfiguration {
   protectedResourceMap.set(`${environment.apiBaseUrl}/api/carrito/*`, apiScopes);
   protectedResourceMap.set(`${environment.apiBaseUrl}/api/admin`, apiScopes);
   protectedResourceMap.set(`${environment.apiBaseUrl}/api/admin/*`, apiScopes);
+
+  // En /api/productos solo adjuntar JWT en escritura/borrado (GET sigue público)
+  const metodosEscritura = ['POST', 'PUT', 'PATCH', 'DELETE'].map((httpMethod) => ({
+    httpMethod,
+    scopes: apiScopes,
+  }));
+  protectedResourceMap.set(`${environment.apiBaseUrl}/api/productos`, metodosEscritura);
+  protectedResourceMap.set(`${environment.apiBaseUrl}/api/productos/*`, metodosEscritura);
+  // Subida de imágenes: /api/productos/{id}/imagen (dos segmentos).
+  protectedResourceMap.set(`${environment.apiBaseUrl}/api/productos/**`, metodosEscritura);
 
   return {
     interactionType: InteractionType.Popup,

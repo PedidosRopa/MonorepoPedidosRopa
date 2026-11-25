@@ -1,136 +1,158 @@
-<section class="py-10">
-  <header class="mb-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+<section class="py-8">
+  <header class="mb-5 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
     <div>
       <h1 class="title-grad text-3xl font-bold md:text-4xl">Nuevo pedido</h1>
-      <p class="mt-2 text-slate-400">
-        Arma tu pedido eligiendo cantidades y envíalo con
-        <code class="rounded bg-white/5 px-1.5 py-0.5 text-sm text-violet-300">POST /api/pedidos</code>
-        (Bearer JWT). El monto total lo calcula el backend.
+      <p class="mt-1 text-sm text-slate-400">
+        Elige productos, ajusta cantidades y confirma. El backend calcula el monto y descuenta el stock.
       </p>
     </div>
-    <div class="flex gap-3">
-      <button class="btn-ghost" (click)="cargar()">Recargar</button>
-      <a class="btn-ghost" routerLink="/pedidos">Ver mis pedidos</a>
-      <a class="btn-grad" routerLink="/carrito">Ver carrito <span class="ml-1">🛒</span></a>
+    <div class="flex flex-wrap gap-2">
+      <a routerLink="/pedidos" class="btn-ghost text-sm">Mis pedidos</a>
+      <button type="button" class="btn-ghost text-sm" (click)="carrito.abrirSidebar()">Ver carrito</button>
     </div>
   </header>
 
   @if (error()) {
-    <p class="mb-6 rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-rose-200">{{ error() }}</p>
+    <div class="mb-4 flex items-start justify-between gap-3 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+      <p>{{ error() }}</p>
+      <button type="button" class="shrink-0 text-rose-300 hover:text-white" (click)="error.set(null)" aria-label="Cerrar aviso">✕</button>
+    </div>
   }
   @if (mensaje()) {
-    <p class="mb-6 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-emerald-200">{{ mensaje() }}</p>
+    <p class="mb-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-sm text-emerald-200">{{ mensaje() }}</p>
   }
 
-  <!-- Filtros -->
-  <form class="mb-8 flex flex-wrap gap-3" (ngSubmit)="cargar()">
-    <input
-      class="input-neon flex-1 sm:max-w-64"
-      [(ngModel)]="filtroCategoria"
-      name="filtroCategoria"
-      placeholder="Filtrar por categoría"
-    />
-    <input
-      class="input-neon flex-1 sm:max-w-64"
-      [(ngModel)]="filtroTalla"
-      name="filtroTalla"
-      placeholder="Filtrar por talla"
-    />
-    <button class="btn-ghost" type="submit">Aplicar filtros</button>
-  </form>
-
-  <div class="grid gap-8 lg:grid-cols-[1fr_24rem]">
-    <!-- Catálogo editable -->
-    @if (loading()) {
-      <p class="animate-pulse text-slate-400">Cargando productos…</p>
-    } @else {
-      <div class="grid gap-4 sm:grid-cols-2">
-        @for (p of productos(); track p.idProducto) {
-          <article class="glass glass-hover flex flex-col gap-3 p-5 min-h-[340px]">
-            <div class="flex flex-wrap gap-2">
-              <span class="rounded-full border border-violet-400/30 bg-violet-500/10 px-2.5 py-0.5 text-xs font-medium text-violet-200">{{ p.categoria }}</span>
-              <span class="rounded-full border border-blue-400/30 bg-blue-500/10 px-2.5 py-0.5 text-xs font-medium text-blue-200">Talla {{ p.talla }}</span>
-            </div>
-
-            <h2 class="font-display text-lg leading-snug font-semibold text-white">{{ p.nombre }}</h2>
-            <p class="line-clamp-2 text-sm text-slate-400 flex-1">{{ p.descripcion || 'Sin descripción' }}</p>
-
-            <div class="flex items-end justify-between">
-              <p class="text-sm text-slate-400">Stock: <span class="text-slate-200">{{ p.stock }}</span></p>
-              <p class="title-grad font-display text-xl font-bold">${{ p.precio }}</p>
-            </div>
-
-            <div class="mt-auto flex items-center justify-between rounded-xl border border-white/10 bg-white/5 p-2">
-              <button
-                type="button"
-                class="flex h-9 w-9 items-center justify-center rounded-lg border border-violet-400/30 bg-violet-500/10 text-lg leading-none text-violet-200 transition hover:bg-violet-500/25 disabled:opacity-40"
-                [disabled]="(cantidades()[p.idProducto!] ?? 0) === 0"
-                (click)="cambiarCantidad(p, (cantidades()[p.idProducto!] ?? 0) - 1)"
-                aria-label="Quitar una unidad"
-              >−</button>
-
-              <input
-                class="w-14 border-0 bg-transparent text-center font-semibold text-white focus:outline-none"
-                type="number"
-                min="0"
-                [max]="p.stock"
-                [value]="cantidades()[p.idProducto!] ?? 0"
-                (input)="cambiarCantidad(p, $any($event.target).valueAsNumber)"
-                aria-label="Cantidad"
-              />
-
-              <button
-                type="button"
-                class="flex h-9 w-9 items-center justify-center rounded-lg border border-blue-400/30 bg-blue-500/10 text-lg leading-none text-blue-200 transition hover:bg-blue-500/25 disabled:opacity-40"
-                [disabled]="(cantidades()[p.idProducto!] ?? 0) >= p.stock"
-                (click)="cambiarCantidad(p, (cantidades()[p.idProducto!] ?? 0) + 1)"
-                aria-label="Agregar una unidad"
-              >+</button>
-            </div>
-
-            <button
-              type="button"
-              class="w-full mt-3 rounded-lg border border-blue-400/30 bg-blue-500/10 px-3 py-2 text-xs font-semibold text-blue-200 transition hover:bg-blue-500/25"
-              (click)="agregarAlCarrito(p)"
-              [disabled]="p.stock === 0"
-            >
-              ➕ Agregar al carrito
-            </button>
-          </article>
-        } @empty {
-          <p class="col-span-full rounded-2xl border border-white/10 bg-white/5 px-4 py-8 text-center text-slate-400">
-            Sin productos disponibles.
-          </p>
-        }
+  @if (pedidoCreado(); as creado) {
+    <div class="glass mb-6 p-6 text-center">
+      <div class="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/15 text-2xl">✓</div>
+      <h2 class="font-display text-xl font-bold text-white">Pedido #{{ creado.idPedido }} creado</h2>
+      <p class="mt-1 text-sm text-slate-400">
+        Estado inicial: <span class="text-slate-200">{{ creado.estado }}</span> ·
+        Monto: <span class="text-slate-200">{{ precio(creado.montoTotal) }}</span>
+      </p>
+      <p class="mt-1 text-xs text-slate-500">Se publicó en RabbitMQ/Kafka para su procesamiento.</p>
+      <div class="mt-5 flex flex-wrap justify-center gap-2">
+        <a [routerLink]="['/pedidos', creado.idPedido, 'tracker']" class="btn-grad text-sm">Ver tracker</a>
+        <a routerLink="/pedidos" class="btn-ghost text-sm">Ir a mis pedidos</a>
+        <button type="button" class="btn-ghost text-sm" (click)="nuevoPedido()">Crear otro pedido</button>
       </div>
-    }
+    </div>
+  }
 
-    <!-- Resumen del pedido -->
-    <aside class="glass h-fit p-6 lg:sticky lg:top-24">
-      <h2 class="font-display mb-4 text-lg font-semibold text-white">Resumen del pedido</h2>
-
-      <p class="text-sm text-slate-400">Items seleccionados</p>
-      <p class="font-display text-3xl font-bold text-white">{{ items().length }}</p>
-
-      <p class="mt-4 text-sm text-slate-400">Monto estimado</p>
-      <p class="title-grad font-display text-4xl font-bold">{{ total() }}</p>
-
-      <form class="mt-6 flex flex-col gap-3" (ngSubmit)="crearPedido()">
-        <input
-          class="input-neon"
-          [(ngModel)]="descPedido"
-          name="descPedido"
-          placeholder="Descripción (opcional)"
-        />
-        <button class="btn-grad w-full" type="submit" [disabled]="enviando() || items().length === 0">
-          Crear pedido
-        </button>
+  <div class="grid gap-5 lg:grid-cols-[1fr_22rem]">
+    <!-- Catálogo editable -->
+    <div>
+      <form class="mb-4 flex flex-wrap gap-2" (ngSubmit)="cargar()">
+        <input class="input-neon flex-1 sm:max-w-52" [(ngModel)]="filtroCategoria" name="filtroCategoria" placeholder="Categoría" />
+        <input class="input-neon flex-1 sm:max-w-52" [(ngModel)]="filtroTalla" name="filtroTalla" placeholder="Talla" />
+        <button class="btn-ghost text-sm" type="submit">Filtrar</button>
+        <button class="btn-ghost text-sm" type="button" (click)="limpiarFiltros()">Limpiar</button>
       </form>
 
-      <p class="mt-4 text-xs text-slate-500">
-        Se enviará
-        <code class="text-violet-300">&#123; descPedido, items &#125;</code> con Bearer JWT
-        y se procesará vía RabbitMQ.
+      @if (loading()) {
+        <div class="grid gap-3 sm:grid-cols-2">
+          @for (i of [1, 2, 3, 4]; track i) {
+            <div class="glass h-40 animate-pulse"></div>
+          }
+        </div>
+      } @else {
+        <div class="grid gap-3 sm:grid-cols-2">
+          @for (p of productos(); track p.idProducto) {
+            <article class="glass flex flex-col gap-2 p-3">
+              <div class="flex items-start justify-between gap-2">
+                <div class="min-w-0">
+                  <h2 class="truncate font-display text-base font-semibold text-white">{{ p.nombre }}</h2>
+                  <p class="text-[11px] text-slate-500">{{ p.categoria }} · Talla {{ p.talla }} · Stock {{ p.stock }}</p>
+                </div>
+                <p class="shrink-0 font-display text-lg font-bold text-slate-100">{{ precio(p.precio) }}</p>
+              </div>
+
+              <div class="mt-auto flex items-center justify-between gap-2 border-t border-white/5 pt-2">
+                @if (unidades(p.idProducto) > 0) {
+                  <div class="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      class="flex h-8 w-8 items-center justify-center rounded-lg border border-violet-400/30 bg-violet-500/10 text-violet-200 transition hover:bg-violet-500/20"
+                      (click)="decrementar(p.idProducto!)"
+                      aria-label="Quitar una unidad"
+                    >−</button>
+                    <span class="w-7 text-center text-sm font-semibold text-white">{{ unidades(p.idProducto) }}</span>
+                    <button
+                      type="button"
+                      class="flex h-8 w-8 items-center justify-center rounded-lg border border-blue-400/30 bg-blue-500/10 text-blue-200 transition hover:bg-blue-500/20 disabled:opacity-40"
+                      (click)="incrementar(p)"
+                      [disabled]="unidades(p.idProducto) >= p.stock"
+                      aria-label="Agregar una unidad"
+                    >+</button>
+                  </div>
+                } @else {
+                  <span class="text-xs text-slate-500">Sin seleccionar</span>
+                }
+
+                <button
+                  type="button"
+                  class="rounded-lg border border-emerald-400/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-200 transition hover:bg-emerald-500/20 disabled:opacity-40"
+                  (click)="agregar(p)"
+                  [disabled]="p.stock <= 0 || unidades(p.idProducto) >= p.stock"
+                >
+                  {{ p.stock <= 0 ? 'Agotado' : 'Agregar' }}
+                </button>
+              </div>
+            </article>
+          } @empty {
+            <p class="col-span-full rounded-xl border border-white/10 bg-white/5 px-4 py-10 text-center text-sm text-slate-400">
+              Sin productos disponibles con esos filtros.
+            </p>
+          }
+        </div>
+      }
+    </div>
+
+    <!-- Resumen / carrito -->
+    <aside class="glass h-fit p-4 lg:sticky lg:top-28">
+      <div class="mb-3 flex items-center justify-between">
+        <h2 class="font-display text-lg font-semibold text-white">Resumen</h2>
+        <span class="rounded-full bg-white/5 px-2 py-0.5 text-xs text-slate-400">{{ count() }} ítem(s)</span>
+      </div>
+
+      @if (items().length === 0) {
+        <p class="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-6 text-center text-xs text-slate-500">
+          Tu carrito está vacío. Agrega productos desde la izquierda.
+        </p>
+      } @else {
+        <ul class="mb-3 max-h-64 space-y-2 overflow-y-auto pr-1">
+          @for (item of items(); track item.productoId) {
+            <li class="flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-2">
+              <div class="min-w-0 flex-1">
+                <p class="truncate text-xs font-semibold text-white">{{ item.nombre }}</p>
+                <p class="text-[11px] text-slate-500">{{ precio(item.precio) }} × {{ item.cantidad }}</p>
+              </div>
+              <div class="flex items-center gap-1">
+                <button type="button" class="px-1 text-sm text-slate-400 hover:text-white" (click)="decrementar(item.productoId)" aria-label="Quitar una unidad">−</button>
+                <span class="w-5 text-center text-xs font-semibold text-white">{{ item.cantidad }}</span>
+                <button type="button" class="px-1 text-sm text-slate-400 hover:text-white" (click)="carrito.incrementar(item.productoId)" aria-label="Agregar una unidad">+</button>
+              </div>
+              <button type="button" class="ml-1 text-[11px] font-semibold text-rose-300 hover:text-rose-200" (click)="quitar(item.productoId)">✕</button>
+            </li>
+          }
+        </ul>
+
+        <button type="button" class="mb-3 text-[11px] text-slate-500 underline hover:text-slate-300" (click)="vaciar()">Vaciar carrito</button>
+      }
+
+      <div class="flex items-center justify-between border-t border-white/10 pt-3">
+        <span class="text-sm text-slate-400">Total estimado</span>
+        <span class="title-grad font-display text-2xl font-bold">{{ precio(total()) }}</span>
+      </div>
+
+      <form class="mt-3 flex flex-col gap-2" (ngSubmit)="crearPedido()">
+        <input class="input-neon text-sm" [(ngModel)]="descPedido" name="descPedido" placeholder="Descripción (opcional)" maxlength="255" />
+        <button class="btn-grad w-full" type="submit" [disabled]="enviando() || items().length === 0">
+          {{ enviando() ? 'Creando pedido…' : 'Confirmar pedido' }}
+        </button>
+      </form>
+      <p class="mt-2 text-center text-[10px] text-slate-600">
+        El monto final y el estado inicial los calcula el backend.
       </p>
     </aside>
   </div>

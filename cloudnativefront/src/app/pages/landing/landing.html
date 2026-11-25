@@ -1,90 +1,125 @@
-<section class="min-h-screen flex flex-col">
+<section class="flex min-h-[70vh] flex-col">
   <!-- Hero -->
-  <div class="relative flex-1 flex flex-col items-center justify-center px-4 pt-20 pb-12 overflow-hidden">
-    <div class="absolute inset-0 -z-10 bg-gradient-to-br from-nebula-950 via-nebula-900 to-nebula-800"></div>
-    <div class="absolute top-0 left-1/4 w-96 h-96 bg-violet-600/20 blur-[120px] rounded-full -translate-y-1/2"></div>
-    <div class="absolute bottom-0 right-1/4 w-96 h-96 bg-blue-600/20 blur-[120px] rounded-full translate-y-1/2"></div>
+  <div class="hero-surface relative flex flex-1 flex-col items-center justify-center px-4 py-16 text-center">
+    <span class="mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-slate-300">
+      <span class="h-2 w-2 rounded-full bg-emerald-400" aria-hidden="true"></span>
+      Sistema de pedidos en línea
+    </span>
 
-    <div class="text-center max-w-4xl">
-      <div class="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-6 py-2.5 mb-8 backdrop-blur-sm">
-        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-        <span class="text-xs font-semibold text-slate-300 uppercase tracking-wider">Sistema de Pedidos en Línea</span>
-      </div>
-      <h1 class="title-grad font-display text-5xl md:text-7xl font-bold leading-tight mb-6">
-        Pedidos de Ropa<br />
-        <span class="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-blue-400">Entregados a tu puerta</span>
-      </h1>
-      <p class="text-slate-400 text-lg md:text-xl max-w-2xl mx-auto mb-10 leading-relaxed">
-        Explora nuestro catálogo de prendas con tallas y géneros disponibles.
-        Inicia sesión con tu cuenta Microsoft para crear pedidos, seguir su estado
-        en tiempo real y gestionar tu carrito de compras.
-      </p>
-      <div class="flex flex-col sm:flex-row gap-4 justify-center">
-        <button class="btn-grad px-8 py-3 text-lg font-semibold" (click)="login()">
-          Iniciar sesión con Microsoft
-        </button>
-        <a routerLink="/productos" class="btn-ghost px-8 py-3 text-lg font-semibold">Ver catálogo</a>
-      </div>
+    <h1 class="title-grad font-display text-4xl font-bold leading-tight md:text-6xl">
+      Pedidos de ropa<br />
+      <span class="text-slate-100">directo a tu puerta</span>
+    </h1>
+
+    <p class="mx-auto mt-5 max-w-2xl text-base leading-relaxed text-slate-400 md:text-lg">
+      Explora el catálogo, arma tu carrito y sigue el estado de tu pedido en cada etapa:
+      preparación, envío y entrega.
+    </p>
+
+    <div class="mt-8 flex flex-col gap-3 sm:flex-row">
+      @if (!auth.isLoggedIn()) {
+        <button class="btn-grad px-6 py-3 text-base" (click)="login()">Iniciar sesión con Microsoft</button>
+      } @else {
+        <a routerLink="/pedidos" class="btn-grad px-6 py-3 text-base">
+          {{ auth.isStaff() ? 'Ver pedidos' : 'Ver mis pedidos' }}
+        </a>
+      }
+      <a routerLink="/productos" class="btn-ghost px-6 py-3 text-base">Ver catálogo</a>
+      @if (auth.isAdmin()) {
+        <a routerLink="/admin" class="btn-ghost px-6 py-3 text-base">Panel admin</a>
+      }
     </div>
+
+    @if (auth.isLoggedIn()) {
+      <p class="mt-4 text-xs text-slate-500">Sesión activa como {{ auth.username() }}</p>
+    }
   </div>
 
-  <!-- Catálogo destacado (solo lectura) -->
-  <div class="bg-nebula-900/40 border-y border-white/5 py-20">
+  <!-- Catálogo destacado -->
+  <div class="border-y border-white/5 bg-nebula-900/40 py-12">
     <div class="mx-auto max-w-6xl px-4">
-      <div class="flex items-center justify-between mb-10">
+      <div class="mb-6 flex items-center justify-between gap-3">
         <h2 class="title-grad font-display text-2xl font-bold">Productos destacados</h2>
-        <a routerLink="/productos" class="text-sm font-semibold text-violet-400 hover:text-violet-300 transition">Ver todos los productos →</a>
+        <a routerLink="/productos" class="text-sm font-semibold text-violet-400 transition hover:text-violet-300">
+          Ver todos →
+        </a>
       </div>
 
-      <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-        @if (loading()) {
-          <p class="animate-pulse text-slate-400 col-span-full text-center">Cargando productos…</p>
-        } @else {
-          @for (p of productos().slice(0, 8); track p.idProducto) {
-            <article class="glass rounded-xl p-4 flex flex-col min-h-[300px]">
-              <div class="aspect-[4/5] w-full rounded-lg border border-white/10 bg-white/5 overflow-hidden flex items-center justify-center mb-3">
+      @if (error()) {
+        <div class="mb-4 flex items-center justify-between gap-3 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+          <span>{{ error() }}</span>
+          <button type="button" class="btn-ghost px-3 py-1 text-xs" (click)="cargar()">Reintentar</button>
+        </div>
+      }
+      @if (mensaje()) {
+        <p class="mb-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-sm text-emerald-200">{{ mensaje() }}</p>
+      }
+
+      @if (loading()) {
+        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          @for (i of [1, 2, 3, 4]; track i) {
+            <div class="glass h-72 animate-pulse"></div>
+          }
+        </div>
+      } @else {
+        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          @for (p of destacados(); track p.idProducto) {
+            <article class="glass flex flex-col p-3">
+              <div class="relative mb-3 aspect-[4/5] overflow-hidden rounded-lg border border-white/10 bg-white/5">
                 @if (p.imagenUrl) {
-                  <img [src]="p.imagenUrl" [alt]="p.nombre" class="w-full h-full object-cover" />
+                  <img [src]="p.imagenUrl" [alt]="p.nombre" class="h-full w-full object-cover" loading="lazy" decoding="async" />
                 } @else {
-                  <div class="w-full h-full flex items-center justify-center text-slate-600 text-sm font-medium">
+                  <div class="flex h-full w-full items-center justify-center font-display text-xl font-bold text-slate-600">
                     {{ (p.nombre.charAt(0) || '?') }}{{ (p.nombre.charAt(1) || '?') }}
                   </div>
                 }
+                @if (unidadesEnCarrito(p.idProducto) > 0) {
+                  <span class="absolute right-2 top-2 rounded-full bg-violet-600 px-2 py-0.5 text-[11px] font-bold text-white">
+                    {{ unidadesEnCarrito(p.idProducto) }}
+                  </span>
+                }
               </div>
-              <h3 class="font-display text-lg font-semibold text-white mb-1">{{ p.nombre }}</h3>
-              <p class="text-xs text-slate-500 line-clamp-2 mb-3 flex-1">{{ p.descripcion || 'Sin descripción' }}</p>
-              <div class="flex items-center justify-between mt-auto pt-3">
-                <span class="text-sm font-medium text-slate-300">{{ p.categoria }} · Talla {{ p.talla }}</span>
-                <span class="title-grad font-display text-xl font-bold">${{ p.precio }}</span>
+              <h3 class="font-display text-base font-semibold text-white">{{ p.nombre }}</h3>
+              <p class="mb-3 line-clamp-1 text-xs text-slate-500">{{ p.categoria }} · Talla {{ p.talla }}</p>
+              <div class="mt-auto flex items-center justify-between gap-2">
+                <span class="title-grad font-display text-lg font-bold">{{ precio(p.precio) }}</span>
+                <button
+                  type="button"
+                  class="btn-grad px-3 py-1.5 text-xs"
+                  (click)="agregarAlCarrito(p)"
+                  [disabled]="p.stock <= 0"
+                >
+                  {{ p.stock <= 0 ? 'Agotado' : 'Agregar' }}
+                </button>
               </div>
             </article>
           } @empty {
-            <p class="col-span-full text-center text-slate-500">Sin productos disponibles.</p>
+            <p class="col-span-full py-8 text-center text-slate-500">Sin productos disponibles.</p>
           }
-        }
-      </div>
+        </div>
+      }
     </div>
   </div>
 
   <!-- Pasos -->
-  <div class="bg-nebula-950 py-20 border-t border-white/5">
+  <div class="py-12">
     <div class="mx-auto max-w-6xl px-4">
-      <h2 class="title-grad font-display text-2xl font-bold mb-12 text-center">Cómo funciona</h2>
-      <div class="grid gap-8 md:grid-cols-3 text-center">
-        <div class="glass p-8 rounded-2xl">
-          <div class="w-12 h-12 rounded-full bg-violet-600/20 flex items-center justify-center mx-auto mb-6 text-violet-400 font-display text-xl font-bold">1</div>
-          <h3 class="font-semibold text-white mb-3">Elige tus prendas</h3>
-          <p class="text-sm text-slate-400 leading-relaxed">Explora el catálogo, filtra por categoría y talla, y agrega productos a tu carrito.</p>
+      <h2 class="title-grad font-display mb-8 text-center text-2xl font-bold">Cómo funciona</h2>
+      <div class="grid gap-4 text-center md:grid-cols-3">
+        <div class="glass p-6">
+          <div class="mx-auto mb-4 flex h-10 w-10 items-center justify-center rounded-full bg-violet-600/20 font-display text-lg font-bold text-violet-300">1</div>
+          <h3 class="mb-2 font-semibold text-white">Elige tus prendas</h3>
+          <p class="text-sm text-slate-400">Filtra por categoría y talla, y agrega al carrito.</p>
         </div>
-        <div class="glass p-8 rounded-2xl">
-          <div class="w-12 h-12 rounded-full bg-blue-600/20 flex items-center justify-center mx-auto mb-6 text-blue-400 font-display text-xl font-bold">2</div>
-          <h3 class="font-semibold text-white mb-3">Inicia sesión</h3>
-          <p class="text-sm text-slate-400 leading-relaxed">Accede con tu cuenta Microsoft Entra ID para crear pedidos y seguir su estado.</p>
+        <div class="glass p-6">
+          <div class="mx-auto mb-4 flex h-10 w-10 items-center justify-center rounded-full bg-blue-600/20 font-display text-lg font-bold text-blue-300">2</div>
+          <h3 class="mb-2 font-semibold text-white">Confirma el pedido</h3>
+          <p class="text-sm text-slate-400">Inicia sesión con Microsoft y revisa el resumen.</p>
         </div>
-        <div class="glass p-8 rounded-2xl">
-          <div class="w-12 h-12 rounded-full bg-indigo-600/20 flex items-center justify-center mx-auto mb-6 text-indigo-400 font-display text-xl font-bold">3</div>
-          <h3 class="font-semibold text-white mb-3">Trackea tu pedido</h3>
-          <p class="text-sm text-slate-400 leading-relaxed">Sigue cada cambio de estado en tiempo real: preparación, envío y entrega.</p>
+        <div class="glass p-6">
+          <div class="mx-auto mb-4 flex h-10 w-10 items-center justify-center rounded-full bg-indigo-600/20 font-display text-lg font-bold text-indigo-300">3</div>
+          <h3 class="mb-2 font-semibold text-white">Sigue el estado</h3>
+          <p class="text-sm text-slate-400">Consulta el tracker con cada cambio de estado.</p>
         </div>
       </div>
     </div>

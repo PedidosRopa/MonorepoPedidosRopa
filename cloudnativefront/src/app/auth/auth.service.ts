@@ -36,11 +36,18 @@ export class AuthService {
 
   readonly isLoggedIn = computed(() => this.activeAccount() !== null);
   readonly username = computed(
-    () => this.activeAccount()?.username ?? this.activeAccount()?.name ?? null
+    () => this.activeAccount()?.name ?? this.activeAccount()?.username ?? null
   );
+  readonly email = computed(() => this.activeAccount()?.username ?? null);
 
   /** Rol principal del usuario. Se extrae del claim 'roles' del JWT. */
   readonly userRole = signal<RolUsuario | null>(null);
+
+  readonly isAdmin = computed(() => this.userRole() === 'ADMINISTRADOR');
+  readonly isStaff = computed(
+    () => this.userRole() === 'ADMINISTRADOR' || this.userRole() === 'REPARTIDOR'
+  );
+  readonly isCliente = computed(() => this.userRole() === 'CLIENTE');
 
   /** Verifica si el usuario tiene el rol dado. */
   hasRole(rol: RolUsuario): boolean {
@@ -65,6 +72,12 @@ export class AuthService {
   /** Flag para evitar leer roles múltiples veces. */
   private rolesCargados = false;
 
+  /** Evita que varios guards pidan el access token al mismo tiempo. */
+  private rolesEnCurso: Promise<void> | null = null;
+
+  /** Evita navegar dos veces por el mismo login (evento + redirect). */
+  private navegacionPostLogin = false;
+
   constructor() {
     if (!isPlatformBrowser(this.platformId)) {
       return; // SSR: no tocar localStorage/MSAL en el servidor.
@@ -82,8 +95,8 @@ export class AuthService {
       .subscribe((msg) => {
         this.setActiveAccount((msg.payload as AuthenticationResult).account);
         this.cargarRoles();
-        // Después del login exitoso, redirigir a la página de perfil
-        this.router.navigate(['/perfil']);
+        // Vuelve a la pantalla que el usuario intentaba abrir o al perfil.
+        this.irTrasLogin();
       });
 
     this.broadcast.msalSubject$
@@ -104,6 +117,7 @@ export class AuthService {
         if (result?.account) {
           this.setActiveAccount(result.account);
           this.cargarRoles();
+          this.irTrasLogin();
         } else {
           this.syncActiveAccount();
         }
@@ -159,6 +173,18 @@ export class AuthService {
     if (this.rolesCargados) {
       return;
     }
+    if (this.rolesEnCurso) {
+      return this.rolesEnCurso;
+    }
+    this.rolesEnCurso = this.leerRolesDelAccessToken();
+    try {
+      await this.rolesEnCurso;
+    } finally {
+      this.rolesEnCurso = null;
+    }
+  }
+
+  private async leerRolesDelAccessToken(): Promise<void> {
     const account = this.activeAccount() ?? this.msal.instance.getActiveAccount();
     if (!account) return;
     try {
@@ -168,11 +194,11 @@ export class AuthService {
       });
       const payload = result.accessToken.split('.')[1];
       if (!payload) return;
-      // Base64URL safe decode
+      // Base64URL safe decode (con padding para atob).
       const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
-      const claims = JSON.parse(atob(base64));
-      const roles: string[] | undefined = claims.roles;
-      const rol = this.rolPrincipal(roles);
+      const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, '=');
+      const claims = JSON.parse(atob(padded)) as { roles?: string[] };
+      const rol = this.rolPrincipal(claims.roles);
       if (rol) {
         this.rolesCargados = true;
       }
@@ -180,6 +206,18 @@ export class AuthService {
     } catch {
       // Ignorar errores silenciosos (no hay sesión, token expirado, etc.)
     }
+  }
+
+  /**
+   * Garantiza que el rol esté resuelto antes de decidir un guard de ruta.
+   * Si el id token no trae roles, consulta el access token una única vez.
+   */
+  async ensureRolesLoaded(): Promise<RolUsuario | null> {
+    if (this.userRole()) return this.userRole();
+    this.cargarRolesDesdeToken();
+    if (this.userRole()) return this.userRole();
+    await this.cargarRolesDesdeAccessToken();
+    return this.userRole();
   }
 
   private rolPrincipal(roles: string[] | undefined): RolUsuario | null {
@@ -198,9 +236,20 @@ export class AuthService {
     return null;
   }
 
-  /** Inicia login con redirect a Azure. */
-  login(): void {
+  /**
+   * Inicia login con redirect a Azure.
+   * @param destino ruta a la que volver tras autenticarse; por defecto la actual.
+   */
+  login(destino?: string): void {
     if (!isPlatformBrowser(this.platformId)) return;
+    try {
+      const actual = destino || this.router.url;
+      if (actual && !actual.startsWith('/login')) {
+        window.sessionStorage.setItem('pedidosropa.returnUrl', actual);
+      }
+    } catch {
+      // sessionStorage puede estar bloqueado; no es crítico.
+    }
     this.msal.loginRedirect({ ...loginRequest });
   }
 
@@ -208,8 +257,29 @@ export class AuthService {
   logout(): void {
     if (!isPlatformBrowser(this.platformId)) return;
     this.userRole.set(null);
+    this.rolesCargados = false;
+    try {
+      window.sessionStorage.removeItem('pedidosropa.returnUrl');
+    } catch {
+      // Ignorar almacenamiento bloqueado.
+    }
     this.msal.logoutRedirect({
       postLogoutRedirectUri: environment.azure.postLogoutRedirectUri,
+    });
+  }
+
+  private irTrasLogin(): void {
+    if (!isPlatformBrowser(this.platformId) || this.navegacionPostLogin) return;
+    this.navegacionPostLogin = true;
+    let destino = '/perfil';
+    try {
+      destino = window.sessionStorage.getItem('pedidosropa.returnUrl') || '/perfil';
+      window.sessionStorage.removeItem('pedidosropa.returnUrl');
+    } catch {
+      // Ignorar almacenamiento bloqueado.
+    }
+    void this.router.navigateByUrl(destino).finally(() => {
+      window.setTimeout(() => (this.navegacionPostLogin = false), 500);
     });
   }
 

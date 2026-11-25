@@ -1,122 +1,233 @@
-import { Injectable, inject, signal, computed } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
-import { CarritoItem } from './models';
-import { environment } from '../../environments/environment';
+import { Injectable, computed, signal } from '@angular/core';
+import { CarritoItem, DetalleItem, Producto } from './models';
+
+const STORAGE_KEY = 'pedidosropa.carrito.v1';
 
 /**
- * Carrito de compras: estado global + persistencia en backend /api/carrito.
- * El estado se indexa por el OID de Entra ID (claim 'oid' del JWT).
+ * Carrito de compras global (sidebar perpetuo).
+ *
+ * Se guarda en localStorage para que funcione sin sesión y sobreviva a recargas.
+ * Decisión de producto: no se sincroniza con /api/carrito para evitar llamadas
+ * extra (y popups de MSAL) que ralentizaban la app; el backend igualmente limpia
+ * su carrito persistido al crear un pedido.
  */
 @Injectable({ providedIn: 'root' })
 export class CarritoService {
-  private readonly http = inject(HttpClient);
-  private readonly base = `${environment.apiBaseUrl}/api/carrito`;
+  private readonly _items = signal<CarritoItem[]>(this.leerLocal());
 
-  /** Estado global del carrito (cantidad de items para badge del navbar). */
-  protected readonly items = signal<CarritoItem[]>([]);
+  /** Items del carrito (solo lectura para plantillas). */
+  readonly itemsReadonly = this._items.asReadonly();
 
-  readonly count = computed(
-    () => this.items().reduce((suma, i) => suma + i.cantidad, 0)
+  readonly count = computed(() =>
+    this._items().reduce((suma, item) => suma + item.cantidad, 0)
   );
 
-  /** Items del carrito como señal de solo lectura. */
-  readonly itemsReadonly = this.items.asReadonly();
-
-  /** Carga el carrito desde el backend (se llama tras el login). */
-  cargar(): Observable<CarritoItem[]> {
-    return this.http.get<CarritoItem[]>(this.base).pipe(
-      // eslint-disable-next-line no-console
-      // No console logs en producción
-    );
-  }
-
-  /** Guarda el carrito completo en el backend y actualiza el estado global. */
-  guardar(items: CarritoItem[]): Observable<CarritoItem[]> {
-    return this.http.put<CarritoItem[]>(this.base, items).pipe(
-      // eslint-disable-next-line no-console
-    );
-  }
-
-  /** Vacía el carrito en el backend y en el estado global. */
-  vaciar(): Observable<void> {
-    return this.http.delete<void>(this.base).pipe(
-      // eslint-disable-next-line no-console
-    );
-  }
-
-  /** Settea el estado local sin escribir al backend (útil para optimismo). */
-  setItems(items: CarritoItem[]): void {
-    this.items.set(items);
-  }
-
-  /** Agrega un producto al carrito (o incrementa cantidad). */
-  agregar(item: CarritoItem): void {
-    this.items.update((lista) => {
-      const existente = lista.find((i) => i.productoId === item.productoId);
-      if (existente) {
-        return lista.map((i) =>
-          i.productoId === item.productoId
-            ? { ...i, cantidad: i.cantidad + item.cantidad }
-            : i
-        );
-      }
-      return [...lista, item];
-    });
-  }
-
-  /** Incrementa la cantidad de un producto en el carrito. */
-  incrementar(productoId: number): void {
-    this.items.update((lista) =>
-      lista.map((i) =>
-        i.productoId === productoId ? { ...i, cantidad: i.cantidad + 1 } : i
-      )
-    );
-  }
-
-  /** Decrementa la cantidad de un producto; si llega a 0, lo elimina. */
-  decrementar(productoId: number): void {
-    this.items.update((lista) => {
-      const existente = lista.find((i) => i.productoId === productoId);
-      if (!existente) return lista;
-      if (existente.cantidad <= 1) {
-        return lista.filter((i) => i.productoId !== productoId);
-      }
-      return lista.map((i) =>
-        i.productoId === productoId ? { ...i, cantidad: i.cantidad - 1 } : i
-      );
-    });
-  }
-
-  /** Elimina un producto del carrito. */
-  remover(productoId: number): void {
-    this.items.update((lista) => lista.filter((i) => i.productoId !== productoId));
-  }
-
-  /** Monto total del carrito. */
-  total = computed(
-    () =>
-      this.items().reduce(
-        (suma, i) => suma + i.precio * i.cantidad,
-        0
-      )
+  readonly total = computed(() =>
+    this._items().reduce((suma, item) => suma + item.precio * item.cantidad, 0)
   );
 
-  /** Visibilidad del sidebar del carrito (perpetuo en todas las páginas). */
+  /** Visibilidad del sidebar, compartida por el navbar y cualquier página. */
   readonly sidebarOpen = signal(false);
 
-  /** Alterna la visibilidad del sidebar. */
+  // ---------------------------------------------------------------------
+  // Sidebar
+  // ---------------------------------------------------------------------
+
   toggleSidebar(): void {
-    this.sidebarOpen.update((v) => !v);
+    this.sidebarOpen.update((abierto) => !abierto);
   }
 
-  /** Abre el sidebar. */
   abrirSidebar(): void {
     this.sidebarOpen.set(true);
   }
 
-  /** Cierra el sidebar. */
   cerrarSidebar(): void {
     this.sidebarOpen.set(false);
+  }
+
+  // ---------------------------------------------------------------------
+  // Mutaciones del carrito
+  // ---------------------------------------------------------------------
+
+  /** Agrega un producto (o suma unidades si ya está en el carrito). */
+  agregarProducto(producto: Producto, cantidad = 1): void {
+    if (!producto.idProducto || cantidad <= 0) return;
+    const limite = producto.stock ?? Number.MAX_SAFE_INTEGER;
+
+    this._items.update((lista) => {
+      const existente = lista.find((item) => item.productoId === producto.idProducto);
+      if (existente) {
+        const nuevaCantidad = Math.min(existente.cantidad + cantidad, limite);
+        return lista.map((item) =>
+          item.productoId === producto.idProducto
+            ? { ...item, cantidad: nuevaCantidad, stock: producto.stock, precio: producto.precio }
+            : item
+        );
+      }
+      return [
+        ...lista,
+        {
+          productoId: producto.idProducto!,
+          nombre: producto.nombre,
+          precio: producto.precio,
+          cantidad: Math.min(cantidad, limite),
+          imagenUrl: producto.imagenUrl,
+          stock: producto.stock,
+        },
+      ];
+    });
+    this.persistir();
+  }
+
+  /** Reemplaza el carrito completo (por ejemplo, al precargar "nuevo pedido"). */
+  setItems(items: CarritoItem[]): void {
+    this._items.set(items);
+    this.persistir();
+  }
+
+  /** Fija una cantidad exacta; 0 o menos elimina el producto. */
+  actualizarCantidad(productoId: number, cantidad: number): void {
+    const numero = Math.floor(Number(cantidad) || 0);
+    this._items.update((lista) => {
+      if (numero <= 0) {
+        return lista.filter((item) => item.productoId !== productoId);
+      }
+      return lista.map((item) =>
+        item.productoId === productoId
+          ? { ...item, cantidad: Math.min(numero, item.stock ?? Number.MAX_SAFE_INTEGER) }
+          : item
+      );
+    });
+    this.persistir();
+  }
+
+  incrementar(productoId: number): void {
+    this._items.update((lista) =>
+      lista.map((item) => {
+        if (item.productoId !== productoId) return item;
+        const limite = item.stock ?? Number.MAX_SAFE_INTEGER;
+        return { ...item, cantidad: Math.min(item.cantidad + 1, limite) };
+      })
+    );
+    this.persistir();
+  }
+
+  decrementar(productoId: number): void {
+    this._items.update((lista) => {
+      const existente = lista.find((item) => item.productoId === productoId);
+      if (!existente) return lista;
+      if (existente.cantidad <= 1) {
+        return lista.filter((item) => item.productoId !== productoId);
+      }
+      return lista.map((item) =>
+        item.productoId === productoId
+          ? { ...item, cantidad: item.cantidad - 1 }
+          : item
+      );
+    });
+    this.persistir();
+  }
+
+  remover(productoId: number): void {
+    this._items.update((lista) => lista.filter((item) => item.productoId !== productoId));
+    this.persistir();
+  }
+
+  vaciar(): void {
+    this._items.set([]);
+    if (typeof window !== 'undefined') {
+      window.localStorage.removeItem(STORAGE_KEY);
+    }
+  }
+
+  /** Unidades de un producto concreto (0 si no está en el carrito). */
+  unidadesDe(productoId?: number): number {
+    if (!productoId) return 0;
+    return this._items().find((item) => item.productoId === productoId)?.cantidad ?? 0;
+  }
+
+  /** Items listos para enviar en el body de POST /api/pedidos. */
+  itemsParaPedido(): DetalleItem[] {
+    return this._items().map((item) => ({
+      productoId: item.productoId,
+      cantidad: item.cantidad,
+    }));
+  }
+
+  /** Recalcula precios/stock con el catálogo más reciente. */
+  sincronizarCatalogo(productos: Producto[]): void {
+    if (!productos.length) return;
+    const porId = new Map(productos.map((producto) => [producto.idProducto, producto]));
+    let cambio = false;
+
+    this._items.update((lista) =>
+      lista.flatMap((item) => {
+        const producto = porId.get(item.productoId);
+        if (!producto) return [item];
+        if (producto.stock <= 0) {
+          cambio = true;
+          return [];
+        }
+        const cantidad = Math.min(item.cantidad, producto.stock);
+        if (
+          cantidad !== item.cantidad ||
+          producto.precio !== item.precio ||
+          producto.nombre !== item.nombre
+        ) {
+          cambio = true;
+          return [
+            {
+              ...item,
+              nombre: producto.nombre,
+              precio: producto.precio,
+              cantidad,
+              stock: producto.stock,
+              imagenUrl: producto.imagenUrl,
+            },
+          ];
+        }
+        return [item];
+      })
+    );
+
+    if (cambio) this.persistir();
+  }
+
+  // ---------------------------------------------------------------------
+  // Persistencia local
+  // ---------------------------------------------------------------------
+
+  private leerLocal(): CarritoItem[] {
+    if (typeof window === 'undefined') return [];
+    try {
+      const raw = window.localStorage.getItem(STORAGE_KEY);
+      if (!raw) return [];
+      const parsed: unknown = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return [];
+      return parsed
+        .filter((item): item is CarritoItem => {
+          if (!item || typeof item !== 'object') return false;
+          const candidato = item as Partial<CarritoItem>;
+          return (
+            typeof candidato.productoId === 'number' &&
+            typeof candidato.nombre === 'string' &&
+            typeof candidato.precio === 'number' &&
+            typeof candidato.cantidad === 'number' &&
+            candidato.cantidad > 0
+          );
+        })
+        .map((item) => ({ ...item, cantidad: Math.max(1, Math.floor(item.cantidad)) }));
+    } catch {
+      return [];
+    }
+  }
+
+  private persistir(): void {
+    if (typeof window === 'undefined') return;
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(this._items()));
+    } catch {
+      // localStorage lleno o bloqueado: el carrito sigue funcionando en memoria.
+    }
   }
 }
