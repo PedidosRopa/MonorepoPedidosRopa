@@ -31,10 +31,11 @@ interface EtapaTracker {
   actual: boolean;
 }
 
+import { Icon } from '../../components/ui/icon';
 @Component({
   selector: 'app-pedido-tracker',
   standalone: true,
-  imports: [RouterLink, EstadoBadge],
+  imports: [RouterLink, EstadoBadge, Icon],
   templateUrl: './pedido-tracker.html',
   styleUrl: './pedido-tracker.css',
   changeDetection: ChangeDetectionStrategy.OnPush,

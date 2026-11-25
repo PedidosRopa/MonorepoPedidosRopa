@@ -1,21 +1,23 @@
 <nav class="sticky top-0 z-30 border-b border-white/10 bg-nebula-950/95">
-  <div class="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-2.5">
-    <a class="title-grad font-display text-xl font-bold tracking-tight" routerLink="/landing">
-      PedidosRopa
+  <div class="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-2">
+    <a class="logo-link" routerLink="/landing" aria-label="PedidosRopa, ir al inicio">
+      <span class="logo-wordmark">
+        <img src="logo.svg" alt="" width="820" height="1165" decoding="async" fetchpriority="high" />
+      </span>
     </a>
 
     <div class="flex items-center gap-2">
       <button
         type="button"
-        class="relative flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-sm font-semibold text-slate-200 transition hover:bg-white/10"
+        class="relative flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 font-display text-sm font-semibold text-slate-200 transition hover:border-orquidea-500/40 hover:bg-white/10"
         (click)="toggleCarrito()"
         [attr.aria-expanded]="carrito.sidebarOpen()"
         aria-label="Abrir carrito de compras"
       >
-        <span aria-hidden="true">🛒</span>
+        <app-icon nombre="bolsa" [tamano]="18" />
         <span class="hidden sm:inline">Carrito</span>
         @if (carrito.count() > 0) {
-          <span class="rounded bg-rose-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+          <span class="badge-carrito">
             {{ carrito.count() }}
           </span>
         }
@@ -29,7 +31,7 @@
           title="Mi perfil"
         >
           <span
-            class="flex h-6 w-6 items-center justify-center rounded-full bg-violet-600 text-[11px] font-bold text-white"
+            class="flex h-6 w-6 items-center justify-center rounded-full bg-linear-to-br from-marca-500 to-orquidea-500 font-display text-[11px] font-bold text-white"
             aria-hidden="true"
           >
             {{ auth.username()?.charAt(0)?.toUpperCase() || '?' }}

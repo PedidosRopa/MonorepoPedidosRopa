@@ -92,7 +92,11 @@
               >
                 <p class="flex items-center gap-1.5 text-xs font-semibold"
                    [class]="etapa.actual ? 'text-violet-100' : etapa.completada ? 'text-emerald-200' : 'text-slate-400'">
-                  <span aria-hidden="true">{{ etapa.completada ? '✓' : etapa.actual ? '●' : '○' }}</span>
+                  @if (etapa.completada) {
+                    <app-icon nombre="check" [tamano]="13" [grosor]="2.6" />
+                  } @else {
+                    <span class="h-2 w-2 rounded-full" [class]="etapa.actual ? 'bg-chicle-300 animate-pulse' : 'border border-slate-500'" aria-hidden="true"></span>
+                  }
                   {{ etapa.label }}
                 </p>
                 <p class="mt-0.5 text-[10px] leading-tight text-slate-500">{{ etapa.descripcion }}</p>
@@ -146,7 +150,7 @@
               <span class="font-mono text-xs text-slate-500">{{ fecha(h.fechaCambio) }}</span>
               <span class="text-slate-400">
                 {{ etiqueta(h.estadoAnterior) }}
-                <span class="mx-1 text-slate-600">→</span>
+                <app-icon nombre="flecha" [tamano]="12" class="mx-1 align-middle text-slate-600" />
                 <span class="font-semibold text-slate-200">{{ etiqueta(h.estadoNuevo) }}</span>
               </span>
               <span class="ml-auto text-xs text-slate-500">{{ h.actualizadoPorEmail || 'Sistema' }}</span>

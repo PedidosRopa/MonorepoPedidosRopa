@@ -1,12 +1,12 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { map } from 'rxjs';
+import { Icon, NombreIcono } from '../../components/ui/icon';
 
 type ResultadoPago = 'exitoso' | 'fallido' | 'pendiente';
 
 interface VistaResultado {
-  icono: string;
+  icono: NombreIcono;
   titulo: string;
   texto: string;
   clases: string;
@@ -14,21 +14,21 @@ interface VistaResultado {
 
 const VISTAS: Record<ResultadoPago, VistaResultado> = {
   exitoso: {
-    icono: '✓',
+    icono: 'check',
     titulo: 'Pago aprobado',
     texto:
       'Mercado Pago confirmó tu pago. El pedido pasará a "Pagado" en cuanto el backend reciba la notificación (puede tardar unos segundos).',
     clases: 'bg-emerald-500/15 text-emerald-200',
   },
   pendiente: {
-    icono: '…',
+    icono: 'reloj',
     titulo: 'Pago pendiente',
     texto:
       'Tu pago quedó en proceso. Cuando Mercado Pago lo apruebe, el pedido se marcará como pagado automáticamente.',
     clases: 'bg-amber-500/15 text-amber-200',
   },
   fallido: {
-    icono: '✕',
+    icono: 'x',
     titulo: 'Pago no completado',
     texto: 'El pago fue rechazado o cancelado. Tu pedido sigue pendiente y puedes intentarlo de nuevo.',
     clases: 'bg-rose-500/15 text-rose-200',
@@ -43,7 +43,7 @@ const VISTAS: Record<ResultadoPago, VistaResultado> = {
 @Component({
   selector: 'app-pago-resultado',
   standalone: true,
-  imports: [RouterLink],
+  imports: [RouterLink, Icon],
   templateUrl: './pago-resultado.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

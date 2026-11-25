@@ -11,10 +11,11 @@ import { ProductoService } from '../../core/producto.service';
 import { Pedido, Producto } from '../../core/models';
 import { AuthService } from '../../auth/auth.service';
 
+import { Icon } from '../../components/ui/icon';
 @Component({
   selector: 'app-admin-dashboard',
   standalone: true,
-  imports: [RouterLink],
+  imports: [RouterLink, Icon],
   templateUrl: './admin-dashboard.html',
   styleUrl: './admin-dashboard.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
