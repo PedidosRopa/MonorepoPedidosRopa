@@ -5,7 +5,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import software.amazon.awssdk.core.sync.RequestBody;
-import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
@@ -16,6 +15,8 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class S3Service {
 
+    private final S3Client s3Client;
+
     @Value("${aws.s3.bucket}")
     private String bucketName;
 
@@ -23,11 +24,11 @@ public class S3Service {
     private String region;
 
     public String subirImagenProducto(MultipartFile file) throws IOException {
-        S3Client s3Client = S3Client.builder()
-                .region(Region.of(region))
-                .build();
+        String nombreLimpio = file.getOriginalFilename() != null
+                ? file.getOriginalFilename().replaceAll("[^a-zA-Z0-9._-]", "_")
+                : "imagen.jpg";
 
-        String key = "productos/" + UUID.randomUUID() + "-" + file.getOriginalFilename();
+        String key = "productos/" + UUID.randomUUID() + "-" + nombreLimpio;
 
         PutObjectRequest request = PutObjectRequest.builder()
                 .bucket(bucketName)
