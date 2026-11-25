@@ -1,66 +1,157 @@
-import { Component, inject, signal, OnInit } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  OnInit,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { RouterLink, ActivatedRoute } from '@angular/router';
+import { forkJoin, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 import { PedidoService } from '../../core/pedido.service';
-import { HistorialPedido, EstadoPedido } from '../../core/models';
+import { HistorialPedido, EstadoPedido, Pedido } from '../../core/models';
 import { EstadoBadge } from '../../components/ui/estado-badge';
+import { AuthService } from '../../auth/auth.service';
+import { formatearFecha, formatearMoneda } from '../../core/formato';
+import {
+  ETAPAS_TRACKER,
+  ESTADO_META,
+  etiquetaEstado,
+  siguientesEstados,
+} from '../../core/pedido-estado';
 
-/**
- * Vista de seguimiento (tracker) de un pedido.
- * Muestra la línea de tiempo de cambios de estado (historial).
- * Accesible por: dueño del pedido, REPARTIDOR, ADMINISTRADOR.
- */
+interface EtapaTracker {
+  estado: EstadoPedido;
+  label: string;
+  descripcion: string;
+  completada: boolean;
+  actual: boolean;
+}
+
 @Component({
   selector: 'app-pedido-tracker',
   standalone: true,
   imports: [RouterLink, EstadoBadge],
   templateUrl: './pedido-tracker.html',
   styleUrl: './pedido-tracker.css',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PedidoTrackerComponent implements OnInit {
   private readonly api = inject(PedidoService);
   private readonly route = inject(ActivatedRoute);
+  protected readonly auth = inject(AuthService);
 
   protected readonly idPedido = signal<number | null>(null);
+  protected readonly pedido = signal<Pedido | null>(null);
   protected readonly historial = signal<HistorialPedido[]>([]);
   protected readonly loading = signal(false);
   protected readonly error = signal<string | null>(null);
+  protected readonly mensaje = signal<string | null>(null);
+  protected readonly actualizando = signal(false);
+
+  protected readonly etapas = computed<EtapaTracker[]>(() => {
+    const actual = this.pedido()?.estado;
+    const indiceActual = actual ? ETAPAS_TRACKER.indexOf(actual) : -1;
+    return ETAPAS_TRACKER.map((estado, indice) => ({
+      estado,
+      label: ESTADO_META[estado].label,
+      descripcion: ESTADO_META[estado].descripcion,
+      completada: indiceActual >= 0 && indice < indiceActual,
+      actual: indice === indiceActual,
+    }));
+  });
+
+  protected readonly cancelado = computed(() => this.pedido()?.estado === 'CANCELADO');
 
   ngOnInit(): void {
     const id = Number(this.route.snapshot.paramMap.get('id'));
-    if (id) {
-      this.idPedido.set(id);
-      this.cargarHistorial(id);
+    if (!Number.isFinite(id) || id <= 0) {
+      this.error.set('El identificador del pedido no es válido.');
+      return;
     }
+    this.idPedido.set(id);
+    this.cargar();
   }
 
-  cargarHistorial(id: number): void {
+  async cargar(): Promise<void> {
+    const id = this.idPedido();
+    if (!id) return;
+
     this.loading.set(true);
     this.error.set(null);
-    this.api.obtenerHistorial(id).subscribe({
-      next: (data) => {
-        this.historial.set(data);
+    this.mensaje.set(null);
+    // El rol puede venir del access token (asíncrono): esperar antes de elegir endpoint.
+    await this.auth.ensureRolesLoaded();
+
+    const pedidos$ = this.auth.isStaff() ? this.api.listarTodos() : this.api.misPedidos();
+    const historial$ = this.api.obtenerHistorial(id).pipe(catchError(() => of([])));
+
+    forkJoin({ pedidos: pedidos$, historial: historial$ }).subscribe({
+      next: ({ pedidos, historial }) => {
+        const pedido = (pedidos ?? []).find((p) => p.idPedido === id) ?? null;
+        this.pedido.set(pedido);
+
+        if (!pedido && !this.auth.isStaff()) {
+          this.error.set('No tienes permiso para ver este pedido o ya no existe.');
+          this.historial.set([]);
+          this.loading.set(false);
+          return;
+        }
+
+        this.historial.set(historial ?? []);
         this.loading.set(false);
+        if (!pedido) {
+          this.error.set('El pedido no aparece en la lista del backend, pero se muestra el historial disponible.');
+        }
       },
       error: (err) => {
-        if (err?.status === 403 || err?.status === 404) {
-          this.error.set('No tienes permiso para ver el historial de este pedido.');
-        } else {
-          this.error.set(`No se pudo cargar el historial: ${err?.message ?? 'error'}`);
-        }
+        this.error.set(
+          err?.status === 401 || err?.status === 403
+            ? 'No autorizado para ver este pedido.'
+            : `No se pudo cargar el pedido: ${err?.message ?? 'error de red'}`
+        );
         this.loading.set(false);
       },
     });
   }
 
-  /** Formatea una fecha ISO para mostrar. */
-  formatearFecha(fecha?: string): string {
-    if (!fecha) return '—';
-    return new Date(fecha).toLocaleString('es-ES', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
+  opcionesEstado(): EstadoPedido[] {
+    return siguientesEstados(this.pedido()?.estado, this.auth.isAdmin());
+  }
+
+  cambiarEstado(nuevoEstado: EstadoPedido): void {
+    const id = this.idPedido();
+    if (!id || this.actualizando()) return;
+
+    this.actualizando.set(true);
+    this.error.set(null);
+    this.api.actualizarEstado(id, nuevoEstado).subscribe({
+      next: (actualizado) => {
+        this.pedido.update((actual) => (actual ? { ...actual, ...actualizado } : actual));
+        this.mensaje.set(`Estado actualizado a ${etiquetaEstado(nuevoEstado)}.`);
+        this.actualizando.set(false);
+        // El historial se persiste vía Kafka; recargarlo tras un pequeño margen.
+        setTimeout(() => this.cargar(), 1200);
+      },
+      error: (err) => {
+        this.error.set(
+          err?.error?.detail ?? `No se pudo cambiar el estado: ${err?.message ?? 'error de red'}`
+        );
+        this.actualizando.set(false);
+      },
     });
+  }
+
+  etiqueta(estado?: EstadoPedido): string {
+    return etiquetaEstado(estado);
+  }
+
+  fecha(valor?: string): string {
+    return formatearFecha(valor);
+  }
+
+  monto(valor?: number): string {
+    return formatearMoneda(valor);
   }
 }

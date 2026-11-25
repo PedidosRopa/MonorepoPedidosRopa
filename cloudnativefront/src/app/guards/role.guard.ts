@@ -1,41 +1,58 @@
 import { inject } from '@angular/core';
-import { CanActivateFn, CanMatchFn, ActivatedRouteSnapshot, RouterStateSnapshot, Route, UrlSegment } from '@angular/router';
+import {
+  CanActivateFn,
+  CanMatchFn,
+  ActivatedRouteSnapshot,
+  Route,
+  Router,
+  UrlSegment,
+} from '@angular/router';
 import { AuthService } from '../auth/auth.service';
+import { RolUsuario } from '../core/models';
 
 /**
- * Guard de roles: permite activar la ruta solo si el usuario tiene el rol requerido
- * o es ADMINISTRADOR (que tiene acceso a todo).
- * Uso en rutas: { canActivate: [roleGuard], data: { role: 'REPARTIDOR' } }
+ * Guard de roles: espera a que el rol esté resuelto (id token o access token)
+ * antes de decidir, para que un ADMINISTRADOR no quede bloqueado por una
+ * lectura asíncrona del JWT.
  */
-export const roleGuard: CanActivateFn = (route: ActivatedRouteSnapshot, state: RouterStateSnapshot) => {
+export const roleGuard: CanActivateFn = async (route: ActivatedRouteSnapshot) => {
   const auth = inject(AuthService);
-  const rolRequerido = route.data?.['role'] as import('../core/models').RolUsuario | undefined;
+  const router = inject(Router);
+  const rolRequerido = route.data?.['role'] as RolUsuario | undefined;
 
   if (!auth.isLoggedIn()) {
-    return false;
+    return router.createUrlTree(['/login']);
   }
 
-  if (!rolRequerido) {
+  const rol = await auth.ensureRolesLoaded();
+
+  if (!rol) {
+    return router.createUrlTree(['/perfil'], { queryParams: { acceso: 'sin-rol' } });
+  }
+
+  if (!rolRequerido || auth.hasRole(rolRequerido)) {
     return true;
   }
 
-  return auth.hasRole(rolRequerido) || auth.hasAnyRole('ADMINISTRADOR');
+  return router.createUrlTree(['/perfil'], { queryParams: { acceso: 'denegado' } });
 };
 
-/**
- * CanMatch opcional para lazy-loading (mismo rol que roleGuard).
- */
-export const roleMatchGuard: CanMatchFn = (route: Route, segments: UrlSegment[]) => {
+/** Variante CanMatch (por si en el futuro se usa para lazy-loading). */
+export const roleMatchGuard: CanMatchFn = async (route: Route, _segments: UrlSegment[]) => {
   const auth = inject(AuthService);
-  const rolRequerido = route.data?.['role'] as import('../core/models').RolUsuario | undefined;
+  const router = inject(Router);
+  const rolRequerido = route.data?.['role'] as RolUsuario | undefined;
 
   if (!auth.isLoggedIn()) {
-    return false;
+    return router.createUrlTree(['/login']);
   }
 
-  if (!rolRequerido) {
-    return true;
+  const rol = await auth.ensureRolesLoaded();
+  if (!rol) {
+    return router.createUrlTree(['/perfil'], { queryParams: { acceso: 'sin-rol' } });
   }
 
-  return auth.hasRole(rolRequerido) || auth.hasAnyRole('ADMINISTRADOR');
+  return !rolRequerido || auth.hasRole(rolRequerido)
+    ? true
+    : router.createUrlTree(['/perfil'], { queryParams: { acceso: 'denegado' } });
 };

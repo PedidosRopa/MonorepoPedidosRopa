@@ -44,6 +44,8 @@ export interface CarritoItem {
   precio: number;
   cantidad: number;
   imagenUrl?: string;
+  /** Stock disponible al momento de agregar; sirve para limitar cantidades. */
+  stock?: number;
 }
 
 /** Body de POST /api/pedidos: PedidoRequestDto. El monto y estado los calcula el backend. */

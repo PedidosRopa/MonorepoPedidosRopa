@@ -1,113 +1,159 @@
-<section class="py-10">
-  <header class="mb-8">
-    <h1 class="title-grad text-3xl font-bold md:text-4xl">Productos</h1>
-    <p class="mt-2 text-slate-400">
-      <code class="rounded bg-white/5 px-1.5 py-0.5 text-sm text-violet-300">GET /api/productos</code>
-      es público. Crear / eliminar requiere login (Bearer JWT).
-    </p>
+<section class="py-8">
+  <header class="mb-6 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+    <div>
+      <h1 class="title-grad text-3xl font-bold md:text-4xl">Catálogo</h1>
+      <p class="mt-1 text-sm text-slate-400">
+        Explora las prendas disponibles y agrégalas al carrito.
+      </p>
+    </div>
+
+    @if (auth.isAdmin()) {
+      <a routerLink="/admin" class="btn-ghost text-sm">Volver al panel admin</a>
+    }
   </header>
 
   @if (error()) {
-    <p class="mb-6 rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-rose-200">{{ error() }}</p>
+    <div class="mb-5 flex items-start justify-between gap-3 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+      <p>{{ error() }}</p>
+      <button type="button" class="shrink-0 text-rose-300 hover:text-white" (click)="error.set(null)" aria-label="Cerrar aviso">✕</button>
+    </div>
+  }
+  @if (mensaje()) {
+    <p class="mb-5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">{{ mensaje() }}</p>
   }
 
-  @if (!auth.isLoggedIn()) {
-    <p class="mb-6 flex flex-wrap items-center gap-3 rounded-2xl border border-amber-400/30 bg-amber-500/10 px-4 py-3 text-amber-100">
-      Estás en modo lectura.
-      <button class="btn-grad px-3 py-1.5 text-sm" (click)="login()">Inicia sesión</button>
-      para crear o eliminar productos.
-    </p>
+  <!-- Crear producto: solo ADMINISTRADOR. Plegado para no molestar al cliente. -->
+  @if (esAdmin()) {
+    <details class="glass mb-6 p-4">
+      <summary class="cursor-pointer select-none font-semibold text-white">➕ Nuevo producto (admin)</summary>
+      <form class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4" (ngSubmit)="crear()">
+        <input class="input-neon" [(ngModel)]="nombre" name="nombre" placeholder="Nombre *" required />
+        <input class="input-neon" [(ngModel)]="categoria" name="categoria" placeholder="Categoría *" required />
+        <input class="input-neon" [(ngModel)]="talla" name="talla" placeholder="Talla *" required />
+        <input class="input-neon" [(ngModel)]="genero" name="genero" placeholder="Género (opcional)" />
+        <input class="input-neon sm:col-span-2" [(ngModel)]="descripcion" name="descripcion" placeholder="Descripción" />
+        <input class="input-neon" [(ngModel)]="precio" name="precio" type="number" step="0.01" min="0" placeholder="Precio *" required />
+        <input class="input-neon" [(ngModel)]="stock" name="stock" type="number" min="0" placeholder="Stock *" required />
+        <div class="flex gap-3 sm:col-span-2 lg:col-span-4">
+          <button class="btn-grad" type="submit" [disabled]="creando()">
+            {{ creando() ? 'Creando…' : 'Crear producto' }}
+          </button>
+          <button class="btn-ghost" type="button" (click)="cargar()">Recargar</button>
+        </div>
+      </form>
+      <p class="mt-3 text-xs text-slate-500">
+        Las imágenes se suben por separado con <code>POST /api/productos/{{ '{' }}id{{ '}' }}/imagen</code>.
+        El backend actualmente no devuelve <code>imagenUrl</code> en el catálogo.
+      </p>
+    </details>
   }
 
   <!-- Filtros -->
-  <form class="mb-6 flex flex-wrap gap-3" (ngSubmit)="cargar()">
-    <input
-      class="input-neon flex-1 sm:max-w-64"
-      [(ngModel)]="filtroCategoria"
-      name="filtroCategoria"
-      placeholder="Filtrar por categoría"
-    />
-    <input
-      class="input-neon flex-1 sm:max-w-64"
-      [(ngModel)]="filtroTalla"
-      name="filtroTalla"
-      placeholder="Filtrar por talla"
-    />
-    <button class="btn-ghost" type="submit">Aplicar filtros</button>
+  <form class="mb-6 flex flex-wrap gap-2" (ngSubmit)="cargar()">
+    <input class="input-neon flex-1 sm:max-w-56" [(ngModel)]="filtroCategoria" name="filtroCategoria" placeholder="Categoría" />
+    <input class="input-neon flex-1 sm:max-w-56" [(ngModel)]="filtroTalla" name="filtroTalla" placeholder="Talla" />
+    <button class="btn-ghost" type="submit">Filtrar</button>
+    <button class="btn-ghost" type="button" (click)="limpiarFiltros()">Limpiar</button>
   </form>
 
-  <!-- Crear producto -->
-  <div class="glass mb-10 p-6">
-    <h2 class="font-display mb-4 text-lg font-semibold text-white">Nuevo producto</h2>
-    <form class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4" (ngSubmit)="crear()">
-      <input class="input-neon" [(ngModel)]="nombre" name="nombre" placeholder="Nombre" required />
-      <input class="input-neon" [(ngModel)]="categoria" name="categoria" placeholder="Categoría" required />
-      <input class="input-neon" [(ngModel)]="talla" name="talla" placeholder="Talla" required />
-      <input class="input-neon" [(ngModel)]="genero" name="genero" placeholder="Género (opcional)" />
-      <input class="input-neon" [(ngModel)]="imagenUrl" name="imagenUrl" placeholder="URL de imagen (S3)" />
-      <input class="input-neon sm:col-span-2" [(ngModel)]="descripcion" name="descripcion" placeholder="Descripción" />
-      <input class="input-neon" [(ngModel)]="precio" name="precio" type="number" step="0.01" min="0" placeholder="Precio" required />
-      <input class="input-neon" [(ngModel)]="stock" name="stock" type="number" min="0" placeholder="Stock" required />
-      <div class="flex gap-3 sm:col-span-2 lg:col-span-4">
-        <button class="btn-grad" type="submit" [disabled]="!auth.isLoggedIn()">Crear producto</button>
-        <button class="btn-ghost" type="button" (click)="cargar()">Recargar</button>
-      </div>
-    </form>
-  </div>
-
-  <!-- Catálogo -->
   @if (loading()) {
-    <p class="animate-pulse text-slate-400">Cargando productos…</p>
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      @for (i of [1, 2, 3, 4, 5, 6, 7, 8]; track i) {
+        <div class="glass h-80 animate-pulse p-4"></div>
+      }
+    </div>
   } @else {
-    <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       @for (p of productos(); track p.idProducto) {
-        <article class="glass glass-hover flex flex-col gap-3 p-5 min-h-[320px]">
-          <div class="flex items-start justify-between gap-2">
-            <span class="rounded-lg border border-white/10 bg-white/5 px-2 py-0.5 text-xs text-slate-400">#{{ p.idProducto }}</span>
-            <button
-              class="btn-danger px-3 py-1.5 text-sm"
-              (click)="eliminar(p.idProducto)"
-              [disabled]="!auth.isLoggedIn()"
-            >Eliminar</button>
-          </div>
-
-          <!-- Imagen del producto -->
-          <div class="aspect-[4/5] w-full rounded-xl border border-white/10 bg-white/5 overflow-hidden flex items-center justify-center mb-2">
+        <article class="glass flex flex-col gap-3 p-4">
+          <div class="relative aspect-[4/5] w-full overflow-hidden rounded-xl border border-white/10 bg-white/5">
             @if (p.imagenUrl) {
-              <img [src]="p.imagenUrl" [alt]="p.nombre" class="w-full h-full object-cover" />
+              <img
+                [src]="p.imagenUrl"
+                [alt]="p.nombre"
+                class="h-full w-full object-cover"
+                loading="lazy"
+                decoding="async"
+              />
             } @else {
-              <div class="w-full h-full flex items-center justify-center text-slate-600 text-sm font-medium">
+              <div class="flex h-full w-full items-center justify-center font-display text-2xl font-bold text-slate-600">
                 {{ (p.nombre.charAt(0) || '?') }}{{ (p.nombre.charAt(1) || '?') }}
               </div>
             }
-          </div>
 
-          <h2 class="font-display text-lg leading-snug font-semibold text-white">{{ p.nombre }}</h2>
-          <p class="line-clamp-2 text-sm text-slate-400 flex-1">{{ p.descripcion || 'Sin descripción' }}</p>
-
-          <div class="flex flex-wrap gap-2">
-            <span class="rounded-full border border-violet-400/30 bg-violet-500/10 px-2.5 py-0.5 text-xs font-medium text-violet-200">{{ p.categoria }}</span>
-            <span class="rounded-full border border-blue-400/30 bg-blue-500/10 px-2.5 py-0.5 text-xs font-medium text-blue-200">Talla {{ p.talla }}</span>
-            @if (p.genero) {
-              <span class="rounded-full border border-indigo-400/30 bg-indigo-500/10 px-2.5 py-0.5 text-xs font-medium text-indigo-200">{{ p.genero }}</span>
+            @if (p.stock <= 0) {
+              <span class="absolute inset-0 flex items-center justify-center bg-black/60 text-sm font-bold uppercase tracking-wide text-white">
+                Agotado
+              </span>
+            }
+            @if (unidadesEnCarrito(p.idProducto) > 0) {
+              <span class="absolute right-2 top-2 rounded-full bg-violet-600 px-2 py-0.5 text-[11px] font-bold text-white">
+                {{ unidadesEnCarrito(p.idProducto) }} en carrito
+              </span>
             }
           </div>
 
-          <div class="mt-auto flex items-end justify-between pt-2">
-            <p>
-              <span class="block text-xs text-slate-500">Stock</span>
-              <span class="text-sm text-slate-300">{{ p.stock }} uds</span>
-            </p>
-            <p class="text-right">
-              <span class="block text-xs text-slate-500">Precio</span>
-              <span class="title-grad font-display text-2xl font-bold">${{ p.precio }}</span>
-            </p>
+          <div class="flex-1">
+            <div class="flex items-start justify-between gap-2">
+              <h2 class="font-display text-base font-semibold leading-snug text-white">{{ p.nombre }}</h2>
+              <span class="shrink-0 text-xs text-slate-500">#{{ p.idProducto }}</span>
+            </div>
+            <p class="mt-1 line-clamp-2 text-xs text-slate-400">{{ p.descripcion || 'Sin descripción' }}</p>
+
+            <div class="mt-2 flex flex-wrap gap-1.5">
+              <span class="rounded-full border border-violet-400/30 bg-violet-500/10 px-2 py-0.5 text-[11px] text-violet-200">{{ p.categoria }}</span>
+              <span class="rounded-full border border-blue-400/30 bg-blue-500/10 px-2 py-0.5 text-[11px] text-blue-200">Talla {{ p.talla }}</span>
+              @if (p.genero) {
+                <span class="rounded-full border border-indigo-400/30 bg-indigo-500/10 px-2 py-0.5 text-[11px] text-indigo-200">{{ p.genero }}</span>
+              }
+            </div>
           </div>
+
+          <div class="flex items-end justify-between gap-2 border-t border-white/5 pt-3">
+            <div>
+              <p class="text-[11px] text-slate-500">Stock: {{ p.stock }}</p>
+              <p class="title-grad font-display text-xl font-bold">{{ formatearPrecio(p.precio) }}</p>
+            </div>
+            <button
+              type="button"
+              class="btn-grad px-3 py-2 text-xs"
+              (click)="agregarAlCarrito(p)"
+              [disabled]="p.stock <= 0"
+            >
+              Agregar
+            </button>
+          </div>
+
+          @if (esAdmin()) {
+            <div class="flex items-center justify-between gap-2 border-t border-white/5 pt-2">
+              <span class="text-[11px] text-slate-500">
+                @if (cargandoReferencias()) {
+                  Revisando pedidos…
+                } @else if (tienePedidos(p.idProducto)) {
+                  Tiene pedidos asociados
+                } @else {
+                  Sin pedidos asociados
+                }
+              </span>
+              <button
+                type="button"
+                class="rounded-lg border border-rose-500/30 bg-rose-500/10 px-2.5 py-1 text-xs font-semibold text-rose-200 transition hover:bg-rose-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+                (click)="eliminar(p)"
+                [disabled]="tienePedidos(p.idProducto)"
+                [title]="tienePedidos(p.idProducto) ? 'El backend no permite borrar productos con pedidos (FK).' : 'Eliminar producto'"
+              >
+                Eliminar
+              </button>
+            </div>
+          }
         </article>
       } @empty {
-        <p class="col-span-full rounded-2xl border border-white/10 bg-white/5 px-4 py-8 text-center text-slate-400">
-          Sin productos. Crea uno arriba para empezar.
-        </p>
+        <div class="col-span-full rounded-2xl border border-white/10 bg-white/5 px-4 py-12 text-center text-slate-400">
+          No hay productos con esos filtros.
+          @if (esAdmin()) {
+            <span>Crea uno nuevo con el formulario de arriba.</span>
+          }
+        </div>
       }
     </div>
   }

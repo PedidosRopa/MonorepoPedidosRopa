@@ -1,10 +1,11 @@
-import { Component, inject } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { AuthService } from '../../auth/auth.service';
+import { RolUsuario } from '../../core/models';
 
 /**
- * Página de perfil: muestra los datos de la cuenta autenticada y el rol detectado.
- * Requiere MsalGuard (usuario logueado).
+ * Página de perfil: datos de la cuenta, rol detectado y accesos rápidos
+ * según el rol. Requiere MsalGuard.
  */
 @Component({
   selector: 'app-perfil',
@@ -12,16 +13,19 @@ import { AuthService } from '../../auth/auth.service';
   imports: [RouterLink],
   templateUrl: './perfil.html',
   styleUrl: './perfil.css',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PerfilComponent {
   protected readonly auth = inject(AuthService);
+  private readonly route = inject(ActivatedRoute);
+
+  protected readonly accesoDenegado = this.route.snapshot.queryParamMap.get('acceso');
 
   /** Decodifica el access token para mostrar información útil (opcional). */
   accessTokenInfo: { roles?: string[]; email?: string; name?: string } | null = null;
 
   constructor() {
-    // Intenta obtener información del access token si está disponible
-    this.cargarInfoToken();
+    void this.cargarInfoToken();
   }
 
   async cargarInfoToken(): Promise<void> {
@@ -30,25 +34,40 @@ export class PerfilComponent {
       if (!token) return;
       const payload = token.split('.')[1];
       if (!payload) return;
-      const claims = JSON.parse(atob(payload));
+      const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+      const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, '=');
+      const claims = JSON.parse(atob(padded)) as {
+        roles?: string[];
+        email?: string;
+        preferred_username?: string;
+        name?: string;
+      };
       this.accessTokenInfo = {
         roles: claims.roles,
         email: claims.email || claims.preferred_username,
         name: claims.name,
       };
     } catch {
-      // Ignorar errores
+      // Ignorar errores: la vista funciona sin el detalle del token.
     }
   }
 
-  /** Color del badge según el rol. */
-  getRolColor(rol: string): string {
-    const colores: Record<string, string> = {
-      ADMINISTRADOR: 'text-violet-400',
-      REPARTIDOR: 'text-blue-400',
-      CLIENTE: 'text-emerald-400',
+  getRolColor(rol: RolUsuario): string {
+    const colores: Record<RolUsuario, string> = {
+      ADMINISTRADOR: 'text-violet-300',
+      REPARTIDOR: 'text-blue-300',
+      CLIENTE: 'text-emerald-300',
     };
-    return colores[rol] ?? 'text-slate-400';
+    return colores[rol];
+  }
+
+  getRolDescripcion(rol: RolUsuario): string {
+    const descripciones: Record<RolUsuario, string> = {
+      ADMINISTRADOR: 'Acceso total, incluidos RabbitMQ y Kafka.',
+      REPARTIDOR: 'Pedidos, tracker y cambios de estado logístico.',
+      CLIENTE: 'Catálogo, carrito y tus propios pedidos.',
+    };
+    return descripciones[rol];
   }
 
   logout(): void {
