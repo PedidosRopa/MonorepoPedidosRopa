@@ -1,5 +1,6 @@
 package com.ev1.cloudnative.controllers;
 
+import com.ev1.cloudnative.audit.AuditarAdmin;
 import com.ev1.cloudnative.dtos.ProductoDto;
 import com.ev1.cloudnative.services.ProductoService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -43,6 +44,11 @@ public class ProductoController {
 
     @PostMapping
     @PreAuthorize("hasRole('Administrador')")
+    @AuditarAdmin(
+            accion = "CREAR_PRODUCTO",
+            recurso = "PRODUCTOS",
+            plantilla = "Creó un nuevo producto: {0}"
+    )
     @Operation(summary = "Crear nuevo producto (Solo Administrador)")
     public ResponseEntity<ProductoDto> crearProducto(@Valid @RequestBody ProductoDto dto) {
         return ResponseEntity.status(HttpStatus.CREATED).body(productoService.guardar(dto));
@@ -50,6 +56,11 @@ public class ProductoController {
 
     @PostMapping(value = "/{id}/imagen", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasRole('Administrador')")
+    @AuditarAdmin(
+            accion = "ACTUALIZAR_IMAGEN_PRODUCTO",
+            recurso = "PRODUCTOS",
+            plantilla = "Actualizó la imagen del producto ID {0} con el archivo '{1}'"
+    )
     @Operation(summary = "Subir imagen de producto a AWS S3 (Solo Administrador)")
     public ResponseEntity<ProductoDto> subirImagen(
             @PathVariable Long id,
@@ -59,6 +70,11 @@ public class ProductoController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('Administrador')")
+    @AuditarAdmin(
+            accion = "ELIMINAR_PRODUCTO",
+            recurso = "PRODUCTOS",
+            plantilla = "Eliminó el producto con ID {0}"
+    )
     @Operation(summary = "Eliminar producto (Solo Administrador)")
     public ResponseEntity<Void> eliminarProducto(@PathVariable Long id) {
         productoService.eliminar(id);

@@ -114,9 +114,29 @@ public class KafkaConfig {
     }
 
     @Bean
+    public NewTopic pedidosEstadosDltTopic() {
+        return TopicBuilder.name(pedidosEstadosTopic + ".DLT")
+                .partitions(3)
+                .replicas(2)
+                .config(TopicConfig.RETENTION_MS_CONFIG, "1209600000") // 14 días
+                .config(TopicConfig.CLEANUP_POLICY_CONFIG, TopicConfig.CLEANUP_POLICY_DELETE)
+                .build();
+    }
+
+    @Bean
     public NewTopic auditoriaAdminTopic() {
         return TopicBuilder.name(auditoriaAdminTopic)
-                .partitions(2)
+                .partitions(3)
+                .replicas(2)
+                .config(TopicConfig.RETENTION_MS_CONFIG, "2592000000") // 30 días
+                .config(TopicConfig.CLEANUP_POLICY_CONFIG, TopicConfig.CLEANUP_POLICY_DELETE)
+                .build();
+    }
+
+    @Bean
+    public NewTopic auditoriaAdminDltTopic() {
+        return TopicBuilder.name(auditoriaAdminTopic + ".DLT")
+                .partitions(3)
                 .replicas(2)
                 .config(TopicConfig.RETENTION_MS_CONFIG, "2592000000") // 30 días
                 .config(TopicConfig.CLEANUP_POLICY_CONFIG, TopicConfig.CLEANUP_POLICY_DELETE)

@@ -9,8 +9,10 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Component;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Arrays;
+import java.util.List;
 
 @Aspect
 @Component
@@ -32,25 +34,47 @@ public class AdminAuditAspect {
                     : (jwt.getClaimAsString("email") != null ? jwt.getClaimAsString("email") : oid);
         }
 
-        String argsResumen = Arrays.stream(joinPoint.getArgs())
+        List<String> argsLimpios = Arrays.stream(joinPoint.getArgs())
                 .filter(arg -> !(arg instanceof Jwt))
-                .map(String::valueOf)
-                .toList()
-                .toString();
+                .map(this::formatearArgumento)
+                .toList();
+
+        String detalleExito = construirDetalle(auditarAdmin.plantilla(), argsLimpios);
 
         try {
             Object resultado = joinPoint.proceed();
             auditProducer.publicarEvento(AdminAuditEvent.crear(
                     oid, email, auditarAdmin.accion(), auditarAdmin.recurso(),
-                    "Args: " + argsResumen, true
+                    detalleExito, true
             ));
             return resultado;
         } catch (Throwable ex) {
             auditProducer.publicarEvento(AdminAuditEvent.crear(
                     oid, email, auditarAdmin.accion(), auditarAdmin.recurso(),
-                    "Fallo (" + ex.getClass().getSimpleName() + "): " + ex.getMessage(), false
+                    detalleExito + " | Error (" + ex.getClass().getSimpleName() + "): " + ex.getMessage(), false
             ));
             throw ex;
         }
+    }
+
+    private String construirDetalle(String plantilla, List<String> args) {
+        if (plantilla == null || plantilla.isBlank()) {
+            return "Args: " + args;
+        }
+        String resultado = plantilla;
+        for (int i = 0; i < args.size(); i++) {
+            resultado = resultado.replace("{" + i + "}", args.get(i));
+        }
+        return resultado;
+    }
+
+    private String formatearArgumento(Object arg) {
+        if (arg == null) {
+            return "null";
+        }
+        if (arg instanceof MultipartFile file) {
+            return file.getOriginalFilename() != null ? file.getOriginalFilename() : "archivo";
+        }
+        return String.valueOf(arg);
     }
 }

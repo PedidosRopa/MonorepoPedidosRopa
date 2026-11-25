@@ -10,4 +10,5 @@ import java.lang.annotation.Target;
 public @interface AuditarAdmin {
     String accion();
     String recurso();
+    String plantilla() default "";
 }
