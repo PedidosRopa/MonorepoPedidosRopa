@@ -79,14 +79,14 @@ public class PagoService {
                 .pending(baseUrl + "/pago-pendiente")
                 .build();
 
-        PreferencePayerRequest.PreferencePayerRequestBuilder payerBuilder = PreferencePayerRequest.builder();
+        /* PreferencePayerRequest.PreferencePayerRequestBuilder payerBuilder = PreferencePayerRequest.builder();
         if (pedido.getUsuarioEmail() != null && !pedido.getUsuarioEmail().isBlank()) {
             payerBuilder.email(pedido.getUsuarioEmail());
-        }
+        } */
 
         PreferenceRequest request = PreferenceRequest.builder()
                 .items(items)
-                .payer(payerBuilder.build())
+                /* .payer(payerBuilder.build()) */
                 .backUrls(backUrls)
                 .autoReturn("approved")
                 .externalReference(String.valueOf(pedido.getIdPedido()))
