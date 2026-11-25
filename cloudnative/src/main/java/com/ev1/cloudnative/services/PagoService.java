@@ -17,13 +17,16 @@ import com.mercadopago.exceptions.MPException;
 import com.mercadopago.resources.preference.Preference;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.Collections;
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class PagoService {
@@ -54,44 +57,82 @@ public class PagoService {
             throw new IllegalStateException("No se puede generar pago para un pedido cancelado.");
         }
 
-        List<PreferenceItemRequest> items = pedido.getDetalles().stream()
-                .map((DetallePedido d) -> PreferenceItemRequest.builder()
-                        .id(String.valueOf(d.getProducto().getIdProducto()))
-                        .title(d.getProducto().getNombre())
-                        .quantity(d.getCantidad())
-                        .unitPrice(BigDecimal.valueOf(Math.round(d.getPrecioUnitario())))
-                        .currencyId("CLP")
-                        .build())
+        List<DetallePedido> detalles = pedido.getDetalles() != null
+                ? pedido.getDetalles()
+                : Collections.emptyList();
+
+        if (detalles.isEmpty()) {
+            throw new IllegalStateException("El pedido #" + idPedido + " no tiene detalles/ítems para pagar.");
+        }
+
+        List<PreferenceItemRequest> items = detalles.stream()
+                .map(d -> toPreferenceItem(d, idPedido))
                 .toList();
 
+        String baseUrl = frontendUrl.endsWith("/")
+                ? frontendUrl.substring(0, frontendUrl.length() - 1)
+                : frontendUrl;
+
         PreferenceBackUrlsRequest backUrls = PreferenceBackUrlsRequest.builder()
-                .success(frontendUrl + "/pago-exitoso")
-                .failure(frontendUrl + "/pago-fallido")
-                .pending(frontendUrl + "/pago-pendiente")
+                .success(baseUrl + "/pago-exitoso")
+                .failure(baseUrl + "/pago-fallido")
+                .pending(baseUrl + "/pago-pendiente")
                 .build();
 
-        PreferencePayerRequest payer = PreferencePayerRequest.builder()
-                .email(pedido.getUsuarioEmail())
-                .build();
+        PreferencePayerRequest.PreferencePayerRequestBuilder payerBuilder = PreferencePayerRequest.builder();
+        if (pedido.getUsuarioEmail() != null && !pedido.getUsuarioEmail().isBlank()) {
+            payerBuilder.email(pedido.getUsuarioEmail());
+        }
 
         PreferenceRequest request = PreferenceRequest.builder()
                 .items(items)
-                .payer(payer)
+                .payer(payerBuilder.build())
                 .backUrls(backUrls)
                 .autoReturn("approved")
                 .externalReference(String.valueOf(pedido.getIdPedido()))
                 .build();
 
-        PreferenceClient client = new PreferenceClient();
-        Preference preference = client.create(request);
+        try {
+            PreferenceClient client = new PreferenceClient();
+            Preference preference = client.create(request);
 
-        pedido.setMpPreferenceId(preference.getId());
-        pedidoRepository.save(pedido);
+            pedido.setMpPreferenceId(preference.getId());
+            pedidoRepository.save(pedido);
 
-        return new PreferenciaPagoDto(
-                preference.getId(),
-                preference.getInitPoint(),
-                preference.getSandboxInitPoint()
-        );
+            return new PreferenciaPagoDto(
+                    preference.getId(),
+                    preference.getInitPoint(),
+                    preference.getSandboxInitPoint()
+            );
+        } catch (MPApiException e) {
+            String apiContent = e.getApiResponse() != null ? e.getApiResponse().getContent() : "sin contenido";
+            log.error("Error de API Mercado Pago para pedido {}: status={}, content={}",
+                    idPedido, e.getStatusCode(), apiContent, e);
+            throw e;
+        } catch (Exception e) {
+            log.error("Error inesperado creando preferencia para pedido {}", idPedido, e);
+            throw e;
+        }
+    }
+
+    private PreferenceItemRequest toPreferenceItem(DetallePedido d, Long idPedido) {
+        String itemId = d.getProducto() != null && d.getProducto().getIdProducto() != null
+                ? String.valueOf(d.getProducto().getIdProducto())
+                : String.valueOf(d.getIdDetalle());
+
+        String title = d.getProducto() != null && d.getProducto().getNombre() != null
+                ? d.getProducto().getNombre()
+                : "Producto pedido #" + idPedido;
+
+        int cantidad = d.getCantidad() != null ? d.getCantidad() : 1;
+        long unitPrice = d.getPrecioUnitario() != null ? Math.round(d.getPrecioUnitario()) : 0L;
+
+        return PreferenceItemRequest.builder()
+                .id(itemId)
+                .title(title)
+                .quantity(cantidad)
+                .unitPrice(BigDecimal.valueOf(unitPrice))
+                .currencyId("CLP")
+                .build();
     }
 }
