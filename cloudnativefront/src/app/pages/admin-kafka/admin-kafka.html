@@ -1,10 +1,12 @@
 <section class="py-10 max-w-6xl mx-auto">
-  <header class="mb-8">
-    <h1 class="title-grad text-3xl font-bold md:text-4xl">Administración Kafka</h1>
-    <p class="mt-2 text-slate-400">
-      Gestión de topics y consumer groups. Solo accesible para usuarios con rol
-      <code class="rounded bg-white/5 px-1 py-0.5 text-xs text-violet-300">ADMINISTRADOR</code>.
-    </p>
+  <header class="mb-6 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+    <div>
+      <h1 class="title-grad text-3xl font-bold md:text-4xl">Administración Kafka</h1>
+      <p class="mt-1 text-sm text-slate-400">
+        Topics, configuraciones y consumer groups. Requiere rol ADMINISTRADOR.
+      </p>
+    </div>
+    <a routerLink="/admin" class="btn-ghost text-sm">Volver al panel</a>
   </header>
 
   @if (error()) {

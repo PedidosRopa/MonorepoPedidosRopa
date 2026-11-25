@@ -1,11 +1,12 @@
 <section class="py-10">
-  <header class="mb-4">
-    <h1 class="title-grad text-3xl font-bold md:text-4xl">Administración RabbitMQ</h1>
-    <p class="mt-2 text-slate-400">
-      Consume el microservicio administrador:
-      <code class="rounded bg-white/5 px-1.5 py-0.5 text-sm text-violet-300">/api/admin/rabbitmq</code>
-      con Bearer JWT. Crea y elimina colas, exchanges y bindings.
-    </p>
+  <header class="mb-5 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+    <div>
+      <h1 class="title-grad text-3xl font-bold md:text-4xl">Administración RabbitMQ</h1>
+      <p class="mt-1 text-sm text-slate-400">
+        Crea y elimina colas, exchanges y bindings. Requiere rol ADMINISTRADOR.
+      </p>
+    </div>
+    <a routerLink="/admin" class="btn-ghost text-sm">Volver al panel</a>
   </header>
 
   @if (error()) {
@@ -25,7 +26,7 @@
     <!-- Colas (violeta) -->
     <div class="glass p-6">
       <div class="mb-4 flex items-center gap-3">
-        <span class="h-3 w-3 rounded-full bg-violet-500 shadow-glow-purple"></span>
+        <span class="h-3 w-3 rounded-full bg-violet-500"></span>
         <h2 class="font-display text-lg font-semibold text-white">Colas</h2>
       </div>
       <form class="flex flex-col gap-3" (ngSubmit)="crearCola()">
@@ -45,7 +46,7 @@
     <!-- Exchanges (azul) -->
     <div class="glass p-6">
       <div class="mb-4 flex items-center gap-3">
-        <span class="h-3 w-3 rounded-full bg-blue-500 shadow-glow-blue"></span>
+        <span class="h-3 w-3 rounded-full bg-blue-500"></span>
         <h2 class="font-display text-lg font-semibold text-white">Exchanges</h2>
       </div>
       <form class="flex flex-col gap-3" (ngSubmit)="crearExchange()">
@@ -65,7 +66,7 @@
     <!-- Bindings (índigo) -->
     <div class="glass p-6">
       <div class="mb-4 flex items-center gap-3">
-        <span class="h-3 w-3 rounded-full bg-indigo-500 shadow-glow-blue"></span>
+        <span class="h-3 w-3 rounded-full bg-indigo-500"></span>
         <h2 class="font-display text-lg font-semibold text-white">Bindings</h2>
       </div>
       <form class="flex flex-col gap-3" (ngSubmit)="crearBinding()">

@@ -1,5 +1,6 @@
-import { Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { AuthService } from '../../auth/auth.service';
 import { RabbitAdminService } from '../../core/rabbit-admin.service';
 import { BindingRequest, ExchangeRequest, QueueRequest } from '../../core/models';
@@ -11,9 +12,10 @@ import { BindingRequest, ExchangeRequest, QueueRequest } from '../../core/models
 @Component({
   selector: 'app-admin-rabbit',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, RouterLink],
   templateUrl: './admin-rabbit.html',
   styleUrl: './admin-rabbit.css',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AdminRabbitComponent {
   private readonly api = inject(RabbitAdminService);

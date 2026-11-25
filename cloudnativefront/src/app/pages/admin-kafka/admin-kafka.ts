@@ -1,5 +1,6 @@
-import { Component, inject, signal, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { KafkaAdminService } from '../../core/kafka-admin.service';
 import { TopicInfo, ConsumerGroupInfo } from '../../core/models';
 
@@ -10,9 +11,10 @@ import { TopicInfo, ConsumerGroupInfo } from '../../core/models';
 @Component({
   selector: 'app-admin-kafka',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, RouterLink],
   templateUrl: './admin-kafka.html',
   styleUrl: './admin-kafka.css',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AdminKafkaComponent implements OnInit {
   private readonly api = inject(KafkaAdminService);

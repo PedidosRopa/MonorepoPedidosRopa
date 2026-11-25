@@ -1,11 +1,12 @@
-import { Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, inject } from '@angular/core';
+import { Router } from '@angular/router';
 import { CarritoService } from '../../../core/carrito.service';
-import { CarritoItem } from '../../../core/models';
 import { AuthService } from '../../../auth/auth.service';
+import { formatearMoneda } from '../../../core/formato';
 
 /**
- * Sidebar del carrito de compras. Se muestra como overlay lateral derecho.
- * Está disponible en todas las páginas a través de app.html.
+ * Sidebar global del carrito. Lee y escribe el estado compartido de
+ * CarritoService, por lo que el botón del navbar siempre lo abre.
  */
 @Component({
   selector: 'app-cart-sidebar',
@@ -13,89 +14,71 @@ import { AuthService } from '../../../auth/auth.service';
   imports: [],
   templateUrl: './cart-sidebar.html',
   styleUrl: './cart-sidebar.css',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class CartSidebarComponent {
   private readonly carrito = inject(CarritoService);
+  private readonly router = inject(Router);
   protected readonly auth = inject(AuthService);
 
-  /** Visibilidad del sidebar (controlada desde AppComponent). */
-  readonly open = signal(false);
-
-  /** Items del carrito. */
+  readonly open = this.carrito.sidebarOpen;
   protected readonly items = this.carrito.itemsReadonly;
   protected readonly count = this.carrito.count;
   protected readonly total = this.carrito.total;
-  protected readonly guardando = signal(false);
-  protected readonly mensaje = signal<string | null>(null);
-  protected readonly error = signal<string | null>(null);
 
-  /** Abre o cierra el sidebar. */
-  toggle(): void {
-    this.open.update((v) => !v);
+  constructor() {
+    effect(() => {
+      if (typeof document !== 'undefined') {
+        document.body.classList.toggle('overflow-hidden', this.open());
+      }
+    });
   }
 
-  /** Abre el sidebar. */
-  abrir(): void {
-    this.open.set(true);
-  }
-
-  /** Cierra el sidebar. */
   cerrar(): void {
-    this.open.set(false);
+    this.carrito.cerrarSidebar();
   }
 
   incrementar(productoId: number): void {
     this.carrito.incrementar(productoId);
-    this.persistir();
   }
 
   decrementar(productoId: number): void {
     this.carrito.decrementar(productoId);
-    this.persistir();
   }
 
   remover(productoId: number): void {
     this.carrito.remover(productoId);
-    this.persistir();
   }
 
   vaciar(): void {
-    this.carrito.vaciar().subscribe({
-      next: () => {
-        this.carrito.setItems([]);
-        this.mensaje.set('Carrito vacío.');
-        setTimeout(() => this.mensaje.set(null), 2000);
-      },
-      error: (err) => {
-        this.error.set(`No se pudo vaciar el carrito: ${err?.message ?? 'error'}`);
-      },
-    });
+    this.carrito.vaciar();
   }
 
-  private persistir(): void {
-    this.carrito.guardar(this.carrito.itemsReadonly()).subscribe({
-      next: () => {
-        this.mensaje.set('Carrito actualizado.');
-        setTimeout(() => this.mensaje.set(null), 1500);
-      },
-      error: (err) => {
-        this.error.set(`No se pudo guardar el carrito: ${err?.message ?? 'error'}`);
-      },
-    });
+  irAlCatalogo(): void {
+    this.cerrar();
+    void this.router.navigate(['/productos']);
   }
 
-  /** Crea un pedido con los items del carrito. */
+  /** Si hay sesión va a "nuevo pedido"; si no, inicia el login de Microsoft. */
   finalizarPedido(): void {
-    if (this.items().length === 0) {
-      this.error.set('Tu carrito está vacío.');
+    if (this.items().length === 0) return;
+    this.cerrar();
+    if (!this.auth.isLoggedIn()) {
+      this.auth.login('/nuevo-pedido');
       return;
     }
-    const items: { productoId: number; cantidad: number }[] = this.items().map((i) => ({
-      productoId: i.productoId,
-      cantidad: i.cantidad,
-    }));
-    // Pasar items por query string a nuevo-pedido
-    const url = `/nuevo-pedido?carrito=${encodeURIComponent(JSON.stringify(items))}`;
-    window.location.href = url;
+    void this.router.navigate(['/nuevo-pedido']);
+  }
+
+  precio(valor: number): string {
+    return formatearMoneda(valor);
+  }
+
+  subtotal(precio: number, cantidad: number): string {
+    return formatearMoneda(precio * cantidad);
+  }
+
+  limiteAlcanzado(item: { cantidad: number; stock?: number }): boolean {
+    return item.stock !== undefined && item.cantidad >= item.stock;
   }
 }

@@ -67,6 +67,8 @@ export function msalInterceptorConfigFactory(): MsalInterceptorConfiguration {
   }));
   protectedResourceMap.set(`${environment.apiBaseUrl}/api/productos`, metodosEscritura);
   protectedResourceMap.set(`${environment.apiBaseUrl}/api/productos/*`, metodosEscritura);
+  // Subida de imágenes: /api/productos/{id}/imagen (dos segmentos).
+  protectedResourceMap.set(`${environment.apiBaseUrl}/api/productos/**`, metodosEscritura);
 
   return {
     interactionType: InteractionType.Popup,
