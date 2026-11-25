@@ -107,7 +107,7 @@ public class KafkaConfig {
     public NewTopic pedidosEstadosTopic() {
         return TopicBuilder.name(pedidosEstadosTopic)
                 .partitions(3)
-                .replicas(1)
+                .replicas(2)
                 .config(TopicConfig.RETENTION_MS_CONFIG, "604800000") // 7 días
                 .config(TopicConfig.CLEANUP_POLICY_CONFIG, TopicConfig.CLEANUP_POLICY_DELETE)
                 .build();
@@ -117,7 +117,7 @@ public class KafkaConfig {
     public NewTopic auditoriaAdminTopic() {
         return TopicBuilder.name(auditoriaAdminTopic)
                 .partitions(2)
-                .replicas(1)
+                .replicas(2)
                 .config(TopicConfig.RETENTION_MS_CONFIG, "2592000000") // 30 días
                 .config(TopicConfig.CLEANUP_POLICY_CONFIG, TopicConfig.CLEANUP_POLICY_DELETE)
                 .build();
