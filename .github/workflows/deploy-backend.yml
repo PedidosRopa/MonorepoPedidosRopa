@@ -43,6 +43,9 @@ jobs:
             RABBITMQ_PORT=5672
             RABBITMQ_USERNAME=guest
             RABBITMQ_PASSWORD=guest
+            KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+            AWS_S3_BUCKET=${{ secrets.AWS_S3_BUCKET }}
+            AWS_REGION=${{ secrets.AWS_REGION }}
             EOF
 
             # 5. Reiniciar contenedores e iniciar en segundo plano
