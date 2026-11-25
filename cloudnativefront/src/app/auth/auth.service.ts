@@ -111,8 +111,6 @@ export class AuthService {
     this.syncActiveAccount();
     // Intenta cargar roles de forma síncrona si ya hay cuenta activa
     this.cargarRolesDesdeToken();
-    // También intenta obtenerlos del access token (asíncrono)
-    this.cargarRolesDesdeAccessToken();
   }
 
   /**
@@ -126,34 +124,7 @@ private cargarRolesDesdeToken(): void {
     }
     const idTokenClaims = account.idTokenClaims as IdTokenClaims | undefined;
     const roles: string[] | undefined = idTokenClaims?.roles;
-    const rolIdToken = this.rolPrincipal(roles);
-
-    if (rolIdToken) {
-      this.userRole.set(rolIdToken);
-    } else {
-      // Si el ID Token no trae 'roles' (porque los App Roles están en la API backend),
-      // los extraemos inmediatamente del Access Token.
-      this.cargarRolesDesdeAccessToken();
-    }
-  }
-
-  async cargarRolesDesdeAccessToken(): Promise<void> {
-    const account = this.activeAccount() ?? this.msal.instance.getActiveAccount();
-    if (!account) return;
-    try {
-      const result = await this.msal.instance.acquireTokenSilent({
-        scopes: [...environment.azure.apiScopes],
-        account,
-      });
-      const payload = result.accessToken.split('.')[1];
-      if (!payload) return;
-      // Base64URL safe decode
-      const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
-      const claims = JSON.parse(atob(base64));
-      this.userRole.set(this.rolPrincipal(claims.roles));
-    } catch {
-      // Ignorar errores silenciosos
-    }
+    this.userRole.set(this.rolPrincipal(roles));
   }
 
   private rolPrincipal(roles: string[] | undefined): RolUsuario | null {
