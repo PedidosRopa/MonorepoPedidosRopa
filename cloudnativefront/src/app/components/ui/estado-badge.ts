@@ -6,6 +6,7 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
  */
 const ESTADO_STYLES: Record<string, string> = {
   PENDIENTE: 'border-amber-400/30 bg-amber-500/10 text-amber-200',
+  PAGADO: 'border-teal-400/30 bg-teal-500/10 text-teal-200',
   PENDIENTE_APROBACION: 'border-yellow-400/30 bg-yellow-500/10 text-yellow-200',
   PROCESANDO: 'border-blue-400/30 bg-blue-500/10 text-blue-200',
   EN_PREPARACION: 'border-orange-400/30 bg-orange-500/10 text-orange-200',

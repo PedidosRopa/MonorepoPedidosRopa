@@ -9,8 +9,10 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { ProductoService } from '../../core/producto.service';
 import { PedidoService } from '../../core/pedido.service';
+import { PagoService } from '../../core/pago.service';
+import { esPagable, etiquetaEstado } from '../../core/pedido-estado';
 import { CarritoService } from '../../core/carrito.service';
-import { Producto, Pedido } from '../../core/models';
+import { Producto, Pedido, EstadoPedido } from '../../core/models';
 import { formatearMoneda } from '../../core/formato';
 
 @Component({
@@ -24,6 +26,7 @@ import { formatearMoneda } from '../../core/formato';
 export class NuevoPedidoComponent implements OnInit {
   private readonly productosApi = inject(ProductoService);
   private readonly pedidosApi = inject(PedidoService);
+  private readonly pagos = inject(PagoService);
   protected readonly carrito = inject(CarritoService);
 
   protected readonly productos = signal<Producto[]>([]);
@@ -32,6 +35,7 @@ export class NuevoPedidoComponent implements OnInit {
   protected readonly mensaje = signal<string | null>(null);
   protected readonly enviando = signal(false);
   protected readonly pedidoCreado = signal<Pedido | null>(null);
+  protected readonly pagando = signal(false);
 
   protected readonly items = this.carrito.itemsReadonly;
   protected readonly total = this.carrito.total;
@@ -134,6 +138,35 @@ export class NuevoPedidoComponent implements OnInit {
           this.enviando.set(false);
         },
       });
+  }
+
+  puedePagar(pedido: Pedido): boolean {
+    return pedido.idPedido !== undefined && esPagable(pedido.estado);
+  }
+
+  pagar(pedido: Pedido): void {
+    const id = pedido.idPedido;
+    if (id === undefined || this.pagando()) return;
+    this.pagando.set(true);
+    this.error.set(null);
+    this.pagos.crearPreferencia(id).subscribe({
+      next: (preferencia) => {
+        if (!this.pagos.redirigirAlPago(preferencia)) {
+          this.error.set('El backend no devolvió un link de pago válido.');
+          this.pagando.set(false);
+        }
+      },
+      error: (err) => {
+        this.error.set(
+          `${this.pagos.mensajeError(err)} Puedes pagarlo más tarde desde "Mis pedidos".`
+        );
+        this.pagando.set(false);
+      },
+    });
+  }
+
+  etiqueta(estado?: EstadoPedido): string {
+    return etiquetaEstado(estado);
   }
 
   precio(valor: number): string {

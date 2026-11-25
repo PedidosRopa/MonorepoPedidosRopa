@@ -27,12 +27,17 @@
       <div class="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/15 text-2xl">✓</div>
       <h2 class="font-display text-xl font-bold text-white">Pedido #{{ creado.idPedido }} creado</h2>
       <p class="mt-1 text-sm text-slate-400">
-        Estado inicial: <span class="text-slate-200">{{ creado.estado }}</span> ·
+        Estado inicial: <span class="text-slate-200">{{ etiqueta(creado.estado) }}</span> ·
         Monto: <span class="text-slate-200">{{ precio(creado.montoTotal) }}</span>
       </p>
       <p class="mt-1 text-xs text-slate-500">Se publicó en RabbitMQ/Kafka para su procesamiento.</p>
       <div class="mt-5 flex flex-wrap justify-center gap-2">
-        <a [routerLink]="['/pedidos', creado.idPedido, 'tracker']" class="btn-grad text-sm">Ver tracker</a>
+        @if (puedePagar(creado)) {
+          <button type="button" class="btn-grad text-sm" (click)="pagar(creado)" [disabled]="pagando()">
+            {{ pagando() ? 'Redirigiendo…' : 'Pagar con Mercado Pago' }}
+          </button>
+        }
+        <a [routerLink]="['/pedidos', creado.idPedido, 'tracker']" class="btn-ghost text-sm">Ver tracker</a>
         <a routerLink="/pedidos" class="btn-ghost text-sm">Ir a mis pedidos</a>
         <button type="button" class="btn-ghost text-sm" (click)="nuevoPedido()">Crear otro pedido</button>
       </div>

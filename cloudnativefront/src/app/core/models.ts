@@ -17,9 +17,10 @@ export interface ProductoFiltros {
   talla?: string;
 }
 
-/** Estados del enum com.ev1.cloudnative.model.EstadoPedido (8 valores). */
+/** Estados del enum com.ev1.cloudnative.model.EstadoPedido (9 valores). */
 export type EstadoPedido =
   | 'PENDIENTE'
+  | 'PAGADO'
   | 'PENDIENTE_APROBACION'
   | 'PROCESANDO'
   | 'EN_PREPARACION'
@@ -82,6 +83,13 @@ export interface HistorialPedido {
   estadoNuevo: EstadoPedido;
   actualizadoPorEmail?: string;
   fechaCambio?: string;
+}
+
+/** Refleja com.ev1.cloudnative.dtos.PreferenciaPagoDto (POST /api/pagos/preferencia/{idPedido}). */
+export interface PreferenciaPago {
+  preferenceId: string;
+  initPoint: string;
+  sandboxInitPoint?: string;
 }
 
 /** Body de PATCH /api/pedidos/{id}/estado. */
