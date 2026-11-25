@@ -51,4 +51,10 @@ public class Pedido {
             this.estado = EstadoPedido.PENDIENTE;
         }
     }
+
+    @Column(length = 120)
+    private String mpPreferenceId;
+
+    @Column(length = 120)
+    private String mpPaymentId;
 }

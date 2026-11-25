@@ -177,6 +177,11 @@ public class PedidoService {
         if (pedido.getEstado() == EstadoPedido.CANCELADO) {
             throw new IllegalStateException("El pedido ya se encuentra cancelado.");
         }
+        
+
+        if (pedido.getEstado() == EstadoPedido.PAGADO) {
+            throw new IllegalStateException("No se puede cancelar directamente un pedido ya pagado.");
+        }
 
         EstadoPedido estadoAnterior = pedido.getEstado();
 
@@ -194,5 +199,21 @@ public class PedidoService {
                 EstadoPedido.CANCELADO.name(),
                 usuarioEmail
         ));
+    }
+    @Transactional
+    public void marcarComoPagado(Long idPedido, String mpPaymentId) {
+        Pedido pedido = pedidoRepository.findById(idPedido)
+                .orElseThrow(() -> new ResourceNotFoundException("Pedido no encontrado con ID: " + idPedido));
+
+        if (pedido.getEstado() == EstadoPedido.PAGADO) {
+            return; // Idempotencia si el webhook llega duplicado
+        }
+
+        if (pedido.getEstado() == EstadoPedido.CANCELADO) {
+            throw new IllegalStateException("No se puede marcar como pagado un pedido cancelado: " + idPedido);
+        }
+
+        pedido.setMpPaymentId(mpPaymentId);
+        actualizarEstadoPedido(idPedido, EstadoPedido.PAGADO, "mercadopago-webhook");
     }
 }
