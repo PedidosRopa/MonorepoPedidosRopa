@@ -62,6 +62,9 @@ export class AuthService {
     'CLIENTE',
   ];
 
+  /** Flag para evitar leer roles múltiples veces. */
+  private rolesCargados = false;
+
   constructor() {
     if (!isPlatformBrowser(this.platformId)) {
       return; // SSR: no tocar localStorage/MSAL en el servidor.
@@ -78,7 +81,7 @@ export class AuthService {
       )
       .subscribe((msg) => {
         this.setActiveAccount((msg.payload as AuthenticationResult).account);
-        this.cargarRolesDesdeToken();
+        this.cargarRoles();
         // Después del login exitoso, redirigir a la página de perfil
         this.router.navigate(['/perfil']);
       });
@@ -100,7 +103,7 @@ export class AuthService {
       next: (result) => {
         if (result?.account) {
           this.setActiveAccount(result.account);
-          this.cargarRolesDesdeToken();
+          this.cargarRoles();
         } else {
           this.syncActiveAccount();
         }
@@ -110,13 +113,29 @@ export class AuthService {
 
     this.syncActiveAccount();
     // Intenta cargar roles de forma síncrona si ya hay cuenta activa
+    this.cargarRoles();
+  }
+
+  /**
+   * Lee los roles del idTokenClaims (síncrono). Si no encuentra roles,
+   * intenta obtenerlos del access token (asíncrono, una sola vez).
+   */
+  private cargarRoles(): void {
+    if (this.rolesCargados) {
+      return;
+    }
     this.cargarRolesDesdeToken();
+    // Si el id token no trae roles (App Roles están en la API backend),
+    // intentamos leerlos del access token.
+    if (!this.userRole()) {
+      this.cargarRolesDesdeAccessToken();
+    }
   }
 
   /**
    * Lee los roles del idTokenClaims (síncrono, disponible inmediatamente tras el login).
    */
-private cargarRolesDesdeToken(): void {
+  private cargarRolesDesdeToken(): void {
     const account = this.activeAccount();
     if (!account) {
       this.userRole.set(null);
@@ -124,7 +143,43 @@ private cargarRolesDesdeToken(): void {
     }
     const idTokenClaims = account.idTokenClaims as IdTokenClaims | undefined;
     const roles: string[] | undefined = idTokenClaims?.roles;
-    this.userRole.set(this.rolPrincipal(roles));
+    const rol = this.rolPrincipal(roles);
+    if (rol) {
+      this.rolesCargados = true;
+    }
+    this.userRole.set(rol);
+  }
+
+  /**
+   * Intenta obtener los roles del access token (asíncrono, una sola vez).
+   * Útil cuando los App Roles están registrados en la app del backend (API)
+   * y se emiten en el access token, no en el id token.
+   */
+  async cargarRolesDesdeAccessToken(): Promise<void> {
+    if (this.rolesCargados) {
+      return;
+    }
+    const account = this.activeAccount() ?? this.msal.instance.getActiveAccount();
+    if (!account) return;
+    try {
+      const result = await this.msal.instance.acquireTokenSilent({
+        scopes: [...environment.azure.apiScopes],
+        account,
+      });
+      const payload = result.accessToken.split('.')[1];
+      if (!payload) return;
+      // Base64URL safe decode
+      const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+      const claims = JSON.parse(atob(base64));
+      const roles: string[] | undefined = claims.roles;
+      const rol = this.rolPrincipal(roles);
+      if (rol) {
+        this.rolesCargados = true;
+      }
+      this.userRole.set(rol);
+    } catch {
+      // Ignorar errores silenciosos (no hay sesión, token expirado, etc.)
+    }
   }
 
   private rolPrincipal(roles: string[] | undefined): RolUsuario | null {
