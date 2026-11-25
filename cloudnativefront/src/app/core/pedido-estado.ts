@@ -12,6 +12,7 @@ export interface EstadoMeta {
  */
 export const ESTADOS_PEDIDO: EstadoPedido[] = [
   'PENDIENTE',
+  'PAGADO',
   'PENDIENTE_APROBACION',
   'PROCESANDO',
   'EN_PREPARACION',
@@ -26,6 +27,11 @@ export const ESTADO_META: Record<EstadoPedido, EstadoMeta> = {
     valor: 'PENDIENTE',
     label: 'Pendiente',
     descripcion: 'Pedido recibido y stock reservado.',
+  },
+  PAGADO: {
+    valor: 'PAGADO',
+    label: 'Pagado',
+    descripcion: 'Pago confirmado por Mercado Pago.',
   },
   PENDIENTE_APROBACION: {
     valor: 'PENDIENTE_APROBACION',
@@ -71,6 +77,18 @@ export function esTerminal(estado?: EstadoPedido | null): boolean {
   return !!estado && ESTADOS_TERMINALES.includes(estado);
 }
 
+/** Estados en los que el cliente puede pagar con Mercado Pago. */
+export const ESTADOS_PAGABLES: EstadoPedido[] = ['PENDIENTE', 'PENDIENTE_APROBACION'];
+
+export function esPagable(estado?: EstadoPedido | null): boolean {
+  return !!estado && ESTADOS_PAGABLES.includes(estado);
+}
+
+/** El backend no permite cancelar pedidos terminales ni ya pagados. */
+export function esCancelable(estado?: EstadoPedido | null): boolean {
+  return !!estado && !esTerminal(estado) && estado !== 'PAGADO';
+}
+
 export function etiquetaEstado(estado?: EstadoPedido | null): string {
   return estado ? (ESTADO_META[estado]?.label ?? estado) : 'Sin estado';
 }
@@ -86,6 +104,8 @@ export function siguientesEstados(
 ): EstadoPedido[] {
   switch (estado) {
     case 'PENDIENTE':
+      return ['PROCESANDO'];
+    case 'PAGADO':
       return ['PROCESANDO'];
     case 'PENDIENTE_APROBACION':
       return ['PROCESANDO'];
@@ -105,6 +125,7 @@ export function siguientesEstados(
 /** Etapas que se dibujan en la línea de tiempo del tracker. */
 export const ETAPAS_TRACKER: EstadoPedido[] = [
   'PENDIENTE',
+  'PAGADO',
   'PROCESANDO',
   'EN_PREPARACION',
   'EN_CAMINO',

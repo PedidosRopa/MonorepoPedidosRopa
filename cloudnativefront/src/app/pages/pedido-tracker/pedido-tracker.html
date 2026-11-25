@@ -60,6 +60,15 @@
         }
       </div>
 
+      @if (puedePagar()) {
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-sky-400/30 bg-sky-500/10 px-4 py-3">
+          <p class="text-sm text-sky-100">Este pedido está pendiente de pago.</p>
+          <button type="button" class="btn-grad text-sm" (click)="pagar()" [disabled]="pagando()">
+            {{ pagando() ? 'Redirigiendo…' : 'Pagar con Mercado Pago' }}
+          </button>
+        </div>
+      }
+
       <!-- Progreso -->
       @if (cancelado()) {
         <div class="mb-4 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-4 text-sm text-rose-200">
@@ -71,7 +80,7 @@
       } @else {
         <div class="glass mb-4 p-4">
           <p class="mb-4 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Etapa actual</p>
-          <ol class="grid gap-2 sm:grid-cols-3 lg:grid-cols-6">
+          <ol class="grid gap-2 sm:grid-cols-3 lg:grid-cols-7">
             @for (etapa of etapas(); track etapa.estado) {
               <li
                 class="rounded-xl border px-3 py-2"
