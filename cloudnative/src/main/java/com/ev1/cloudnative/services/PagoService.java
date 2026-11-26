@@ -10,7 +10,6 @@ import com.mercadopago.MercadoPagoConfig;
 import com.mercadopago.client.preference.PreferenceBackUrlsRequest;
 import com.mercadopago.client.preference.PreferenceClient;
 import com.mercadopago.client.preference.PreferenceItemRequest;
-import com.mercadopago.client.preference.PreferencePayerRequest;
 import com.mercadopago.client.preference.PreferenceRequest;
 import com.mercadopago.exceptions.MPApiException;
 import com.mercadopago.exceptions.MPException;
@@ -38,6 +37,9 @@ public class PagoService {
 
     @Value("${app.frontend-url}")
     private String frontendUrl;
+
+    @Value("${mercadopago.webhook-url}")
+    private String webhookUrl;
 
     @PostConstruct
     public void init() {
@@ -79,17 +81,12 @@ public class PagoService {
                 .pending(baseUrl + "/pago-pendiente")
                 .build();
 
-       /*  PreferencePayerRequest.PreferencePayerRequestBuilder payerBuilder = PreferencePayerRequest.builder();
-        if (pedido.getUsuarioEmail() != null && !pedido.getUsuarioEmail().isBlank()) {
-            payerBuilder.email(pedido.getUsuarioEmail());
-        }*/
-
         PreferenceRequest request = PreferenceRequest.builder()
                 .items(items)
-               /*  .payer(payerBuilder.build())*/
                 .backUrls(backUrls)
                 .autoReturn("approved")
                 .externalReference(String.valueOf(pedido.getIdPedido()))
+                .notificationUrl(webhookUrl)
                 .build();
 
         try {

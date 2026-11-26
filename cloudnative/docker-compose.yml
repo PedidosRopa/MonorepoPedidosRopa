@@ -113,6 +113,7 @@ services:
       AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN:-}
       MP_ACCESS_TOKEN: ${MP_ACCESS_TOKEN}
       FRONTEND_URL: ${FRONTEND_URL}
+      MP_WEBHOOK_URL: ${MP_WEBHOOK_URL}
     networks:
       - cloudnative-net
 
