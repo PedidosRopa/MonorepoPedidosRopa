@@ -23,5 +23,7 @@ public record ProductoDto(
     @Schema(description = "Talla del producto")
     String talla,
     @Schema(description = "Género del producto")
-    String genero
+    String genero,
+    @Schema(description = "URL pública de la imagen en AWS S3")
+    String imagenUrl
 ) {}
