@@ -16,8 +16,9 @@ export class PagoService {
   }
 
   /** Lleva al usuario a Mercado Pago. Usa sandbox solo si no hay link productivo. */
+  /** Lleva al usuario a Mercado Pago (prioriza sandbox en entorno de pruebas). */
   redirigirAlPago(preferencia: PreferenciaPago): boolean {
-    const url = preferencia.initPoint || preferencia.sandboxInitPoint;
+    const url = preferencia.sandboxInitPoint || preferencia.initPoint;
     if (!url || typeof window === 'undefined') return false;
     window.location.href = url;
     return true;
